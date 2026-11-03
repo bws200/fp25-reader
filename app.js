@@ -2,8 +2,12 @@
 
 const connectButton = document.querySelector("#connect-button");
 const disconnectButton = document.querySelector("#disconnect-button");
+const connectionPanel = document.querySelector("#connection-panel");
+const connectionSummary = document.querySelector("#connection-summary");
 const pollReadingsButton = document.querySelector("#poll-readings");
 const autoPollButton = document.querySelector("#auto-poll-button");
+const readControls = document.querySelector("#read-controls");
+const readingControlSummary = document.querySelector("#reading-control-summary");
 const statusMessage = document.querySelector("#status");
 const responseStatus = document.querySelector("#response-status");
 const notificationLog = document.querySelector("#notification-log");
@@ -96,6 +100,13 @@ function updatePollButtons() {
   pollReadingsButton.disabled = !canPoll ||
     autoPolling || autoPollStarting || autoPollWritePending || manualPollInProgress;
   autoPollButton.disabled = !canPoll || autoPollStarting || manualPollInProgress;
+  readingControlSummary.textContent = autoPolling
+    ? "Auto update is on"
+    : manualPollInProgress
+      ? "Request in progress"
+      : canPoll
+        ? "Ready"
+        : "Connect to read";
 }
 
 function setStatus(message, isError = false) {
@@ -405,6 +416,7 @@ async function toggleAutoPolling() {
     autoPollButton.textContent = "Stop auto update";
     autoPollStarting = false;
     updatePollButtons();
+    readControls.open = false;
     setResponseStatus("Auto update waits for each complete frame before requesting again.");
     await sendAutoPollRequest();
   } catch (error) {
@@ -469,7 +481,9 @@ function handleDisconnected(device) {
   connectButton.disabled = false;
   disconnectButton.disabled = true;
   connectionIndicator.classList.remove("connected");
-  deviceName.hidden = true;
+  connectionSummary.textContent = "Not connected";
+  connectionPanel.open = true;
+  readControls.open = true;
   clearServices("Disconnected.");
   clearMeasurements();
   setStatus("Device disconnected.");
@@ -638,10 +652,11 @@ async function connect() {
     const server = await device.gatt.connect();
     connectionIndicator.classList.add("connected");
     disconnectButton.disabled = false;
-    deviceName.textContent = `Connected device: ${device.name || "Unnamed device"}`;
-    deviceName.hidden = false;
+    connectionSummary.textContent = device.name || "Connected";
     clearMeasurements();
     await renderServices(server);
+    connectionPanel.open = false;
+    readControls.open = false;
   } catch (error) {
     if (error.name === "NotFoundError") {
       setStatus("No device was selected.", false);
@@ -656,8 +671,9 @@ async function connect() {
     connectButton.disabled = false;
     disconnectButton.disabled = true;
     connectionIndicator.classList.remove("connected");
-    deviceName.hidden = true;
-    deviceName.textContent = "";
+    connectionSummary.textContent = "Not connected";
+    connectionPanel.open = true;
+    readControls.open = true;
     clearServices("Could not inspect the selected device.");
   }
 }
@@ -668,6 +684,7 @@ async function poll(request) {
   }
   manualPollInProgress = true;
   updatePollButtons();
+  readControls.open = false;
   try {
     await pollFp25(request);
   } catch (error) {

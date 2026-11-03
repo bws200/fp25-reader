@@ -17,36 +17,40 @@
         <p class="lede">Connect, request readings, and inspect the response from your meter.</p>
       </header>
 
-      <section class="panel" aria-labelledby="connection-title">
-        <div class="section-heading">
-          <div>
-            <p class="eyebrow">CONNECT</p>
-            <h2 id="connection-title">Device connection</h2>
-          </div>
+      <details id="connection-panel" class="panel connection-details" open>
+        <summary>
+          <span>
+            <span id="connection-title" class="details-title">Device connection</span>
+            <span id="connection-summary" class="control-summary">Not connected</span>
+          </span>
           <span id="connection-indicator" class="connection-indicator" aria-hidden="true"></span>
-        </div>
+        </summary>
+        <div class="connection-content">
+          <div class="actions">
+            <button id="connect-button" class="button button-primary" type="button">Choose device</button>
+            <button id="disconnect-button" class="button button-secondary" type="button" disabled>Disconnect</button>
+          </div>
 
-        <div class="actions">
-          <button id="connect-button" class="button button-primary" type="button">Choose device</button>
-          <button id="disconnect-button" class="button button-secondary" type="button" disabled>Disconnect</button>
+          <p id="status" class="status" role="status" aria-live="polite">Ready to connect.</p>
         </div>
-
-        <p id="status" class="status" role="status" aria-live="polite">Ready to connect.</p>
-        <p id="device-name" class="device-name" hidden></p>
-      </section>
+      </details>
 
       <section class="panel" aria-labelledby="response-title">
-        <div class="section-heading">
-          <div>
-            <p class="eyebrow">READ DATA</p>
-            <h2 id="response-title">Meter response</h2>
+        <details id="read-controls" class="read-controls" open>
+          <summary>
+            <span>
+              <span id="response-title" class="details-title">Meter response</span>
+              <span id="reading-control-summary" class="control-summary">Connect to read</span>
+            </span>
+          </summary>
+          <div class="read-control-content">
+            <div class="actions poll-actions">
+              <button id="poll-readings" class="button button-primary poll-button" type="button" disabled>Request readings</button>
+              <button id="auto-poll-button" class="button button-secondary" type="button" disabled>Start auto update (0.5 s)</button>
+            </div>
+            <p id="response-status" class="status response-status" role="status" aria-live="polite">Connect to the FP-25, then request readings.</p>
           </div>
-        </div>
-        <div class="actions poll-actions">
-          <button id="poll-readings" class="button button-primary poll-button" type="button" disabled>Request readings</button>
-          <button id="auto-poll-button" class="button button-secondary" type="button" disabled>Start auto update (0.5 s)</button>
-        </div>
-        <p id="response-status" class="status response-status" role="status" aria-live="polite">Connect to the FP-25, then request readings.</p>
+        </details>
         <h3 class="readings-heading">Measurements</h3>
         <div class="frame-table-scroll" role="region" aria-label="FP-25 measurements">
           <table class="frame-table">

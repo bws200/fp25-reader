@@ -12,6 +12,8 @@ The app sends the FlowVision BLE terminal's observed live-read request `A` with 
 4. Choose the FP-25 and tap **Request readings** for one update, or **Start auto update (0.5 s)** to keep requesting readings; auto update does not require a successful manual request first. A manual request retries up to five times (about 10 seconds) if a complete frame does not arrive. Auto update retries if a frame is missed and waits 500 ms after each complete frame before requesting again. It stops if the device disconnects or a write fails. Tap **Stop auto update** to return to one-shot mode.
 5. The FP-25 may split one measurement line across several notification characteristics; the app subscribes to them sequentially and joins incoming text chunks in arrival order before decoding the frame. The main table shows measurement, value, and units. Open **Recent raw BLE notifications** or **Bluetooth services** only for diagnostics.
 
+After connecting, the connection and reading controls collapse to compact summaries above the measurements. Tap either summary to reopen its controls; disconnecting reopens both.
+
 Device selection and BLE data remain in the browser; this site has no backend.
 
 The footer shows the Git commit hash and subject used for the deployed build. On each visit, the page checks a cache-busted build manifest and automatically reloads if Pages is serving an older version. The deployment publishes the current `main` build at one Pages URL; it does not create separate public URLs for older builds.

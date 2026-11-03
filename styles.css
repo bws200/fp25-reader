@@ -103,6 +103,57 @@ h1 {
   letter-spacing: -0.025em;
 }
 
+.connection-details > summary,
+.read-controls > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.connection-details > summary::after,
+.read-controls > summary::after {
+  content: "+";
+  color: var(--muted);
+  font-size: 1.15rem;
+  font-weight: 500;
+}
+
+.connection-details[open] > summary::after,
+.read-controls[open] > summary::after {
+  content: "−";
+}
+
+.connection-details > summary .details-title,
+.read-controls > summary .details-title {
+  display: inline;
+}
+
+.connection-details > summary .control-summary,
+.read-controls > summary .control-summary {
+  display: block;
+}
+
+.connection-details[open] > summary,
+.read-controls[open] > summary {
+  margin-bottom: 12px;
+}
+
+.read-controls {
+  color: var(--muted);
+}
+
+.read-controls > summary {
+  width: fit-content;
+  max-width: 100%;
+}
+
+.read-control-content .actions {
+  margin-top: 0;
+}
+
 .actions.poll-actions {
   display: grid;
 }
