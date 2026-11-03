@@ -22,8 +22,9 @@
         <div>
           <h2 id="prototype-title">Read-only measurement polling</h2>
           <p>
-            Poll sends the observed <code>A $$R16</code> read request and decodes the FP-25 data frame.
-            It does not send setpoints or change device settings.
+            Poll subscribes to FP-25 notifications, then tries the observed <code>A $$R16</code> read
+            request on each writable service channel. It stops when a measurement frame arrives and
+            never sends setpoints or changes device settings.
           </p>
         </div>
       </section>
@@ -64,7 +65,7 @@
           <span id="measurement-time" class="count-badge">Waiting for poll</span>
         </div>
         <div id="measurements" class="measurement-grid">
-          <p class="empty-state">Connect, then tap “Poll readings” on an FP-25 Bluetooth characteristic.</p>
+          <p class="empty-state">Connect, then tap “Poll FP-25 readings” in the FP-25 service section.</p>
         </div>
         <p id="measurement-source" class="field-help"></p>
       </section>

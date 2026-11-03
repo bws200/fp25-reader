@@ -395,6 +395,12 @@ button:focus-visible {
   gap: 8px;
 }
 
+.service-actions {
+  display: flex;
+  padding: 12px 14px;
+  border-top: 1px solid var(--line);
+}
+
 .small-button {
   min-height: 38px;
   padding: 8px 11px;
