@@ -14,39 +14,17 @@
       <header class="masthead">
         <p class="eyebrow">ALICAT FP-25 · BLUETOOTH LE</p>
         <h1>Live readings</h1>
-        <p class="lede">Connect to your FP-25 to view its measurements and units.</p>
+        <p class="lede">Connect, request readings, and inspect the response from your meter.</p>
       </header>
-
-      <section class="notice" aria-labelledby="prototype-title">
-        <span class="notice-icon" aria-hidden="true">i</span>
-        <div>
-          <h2 id="prototype-title">Read-only measurement polling</h2>
-          <p>
-            Poll subscribes to FP-25 notifications, then tries the observed <code>A $$R16</code>
-            request on each writable service channel. Choose with or without the trailing carriage
-            return to test BLE framing. Both stop when a measurement frame arrives; neither changes
-            device settings.
-          </p>
-        </div>
-      </section>
 
       <section class="panel" aria-labelledby="connection-title">
         <div class="section-heading">
           <div>
-            <p class="eyebrow">01 / CONNECT</p>
+            <p class="eyebrow">CONNECT</p>
             <h2 id="connection-title">Device connection</h2>
           </div>
           <span id="connection-indicator" class="connection-indicator" aria-hidden="true"></span>
         </div>
-
-        <label for="name-filter">Device name starts with <span class="optional">(optional)</span></label>
-        <input id="name-filter" type="text" autocomplete="off" placeholder="Leave blank to choose any device">
-
-        <label for="service-uuids">Services to authorize</label>
-        <textarea id="service-uuids" rows="2" spellcheck="false">generic_access, device_information, c5e69884-105c-41a2-ab07-ecd590e24814</textarea>
-        <p class="field-help">
-          The FP-25 measurement service is included. Chrome requires services to be authorized here.
-        </p>
 
         <div class="actions">
           <button id="connect-button" class="button button-primary" type="button">Choose device</button>
@@ -57,41 +35,58 @@
         <p id="device-name" class="device-name" hidden></p>
       </section>
 
-      <section class="panel" aria-labelledby="measurements-title">
+      <section class="panel" aria-labelledby="response-title">
         <div class="section-heading">
           <div>
-            <p class="eyebrow">02 / LIVE READINGS</p>
-            <h2 id="measurements-title">FP-25 data frame</h2>
+            <p class="eyebrow">READ DATA</p>
+            <h2 id="response-title">Meter response</h2>
           </div>
-          <span id="measurement-time" class="count-badge">Waiting for frame</span>
+          <span id="measurement-time" class="count-badge">Not received</span>
         </div>
-        <p class="field-help frame-help">
-          Field layout is based on FlowVision's <code>A??D*</code> response. Values appear when a valid
-          measurement frame arrives from the meter; a dash means that field was not present in the frame.
-        </p>
-        <div class="frame-table-scroll" role="region" aria-label="FP-25 data frame fields" tabindex="0">
-          <table class="frame-table">
-            <thead>
-              <tr><th scope="col">ID</th><th scope="col">Code</th><th scope="col">Name</th><th scope="col">Type</th><th scope="col">Value</th><th scope="col">Width</th><th scope="col">Notes</th></tr>
-            </thead>
-            <tbody id="frame-rows"></tbody>
-          </table>
+        <div class="actions poll-actions">
+          <button id="poll-no-cr" class="button button-primary poll-button" type="button" disabled>Request readings</button>
+          <details class="poll-options">
+            <summary>Other request format</summary>
+            <button id="poll-with-cr" class="small-button" type="button" disabled>Try with carriage return</button>
+          </details>
         </div>
+        <p id="response-status" class="status" role="status" aria-live="polite">Connect to the FP-25, then request readings.</p>
+        <pre id="response-output" class="response-output">No data received yet.</pre>
+        <details class="response-log">
+          <summary>Recent raw BLE notifications</summary>
+          <ol id="notification-log" class="notification-log"></ol>
+        </details>
         <p id="measurement-source" class="field-help"></p>
+
+        <details class="frame-details">
+          <summary>Decoded data frame fields</summary>
+          <p class="field-help frame-help">
+            Field layout is based on FlowVision's <code>A??D*</code> response. Values appear when a valid
+            measurement frame arrives; a dash means the field was not present.
+          </p>
+          <div class="frame-table-scroll" role="region" aria-label="FP-25 data frame fields" tabindex="0">
+            <table class="frame-table">
+              <thead>
+                <tr><th scope="col">ID</th><th scope="col">Code</th><th scope="col">Name</th><th scope="col">Type</th><th scope="col">Value</th><th scope="col">Width</th><th scope="col">Notes</th></tr>
+              </thead>
+              <tbody id="frame-rows"></tbody>
+            </table>
+          </div>
+        </details>
       </section>
 
-      <section class="panel" aria-labelledby="services-title">
-        <div class="section-heading">
-          <div>
-            <p class="eyebrow">03 / DETAILS</p>
-            <h2 id="services-title">Bluetooth services</h2>
-          </div>
+      <details class="panel bluetooth-details" aria-labelledby="services-title">
+        <summary>
+          <span>
+            <span class="eyebrow">DETAILS</span>
+            <span id="services-title" class="details-title">Bluetooth services</span>
+          </span>
           <span id="service-count" class="count-badge">0 services</span>
-        </div>
+        </summary>
         <div id="service-list" class="service-list">
-          <p class="empty-state">Connect to a device to discover its authorized services.</p>
+          <p class="empty-state">Connect to a device to inspect Bluetooth channels.</p>
         </div>
-      </section>
+      </details>
 
       <footer>
         <p>Only the fixed read request is sent; the app never writes setpoints or settings. Data stays in your browser.</p>

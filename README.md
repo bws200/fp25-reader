@@ -9,10 +9,10 @@ The app sends the observed FlowVision read request `A $$R16` to FP-25 GATT chara
 1. In the repository, open **Settings → Pages** and set **Build and deployment → Source** to **GitHub Actions**. GitHub requires this one-time setting; the workflow cannot enable Pages without repository-admin permissions.
 2. The included workflow deploys the site whenever `main` is updated. After its first successful run, use the Pages URL shown in the repository's **Settings → Pages**.
 3. Open the published HTTPS Pages URL in Chrome on Android.
-4. Choose the FP-25 and try one of the two **Poll readings** options in its measurement service: with or without a trailing carriage return. Both options subscribe to notification characteristics and send only the observed `A $$R16` read request on writable channels, stopping when a valid measurement frame arrives.
-5. The app shows the FlowVision `A??D*` field layout in a table. Values and units appear as soon as a valid measurement frame arrives; raw bytes remain visible under each characteristic.
+4. Choose the FP-25 and tap **Request readings**. The app subscribes to notifications and sends the observed `A $$R16` request, without a trailing carriage return, on writable channels until one responds. The carriage-return variant is under **Other request format**.
+5. The latest notification is shown as text and hex, whether or not it forms a complete measurement frame. Open **Decoded data frame fields** to inspect parsed values; open **Bluetooth services** only for channel-level details.
 
-The app displays raw bytes as hexadecimal and best-effort UTF-8 text alongside decoded measurements. Device selection and BLE data remain in the browser; this site has no backend.
+Device selection and BLE data remain in the browser; this site has no backend.
 
 The footer shows the Git commit hash and subject used for the deployed build. On each visit, the page checks a cache-busted build manifest and automatically reloads if Pages is serving an older version. The deployment publishes the current `main` build at one Pages URL; it does not create separate public URLs for older builds.
 

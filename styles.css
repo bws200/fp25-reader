@@ -73,44 +73,11 @@ h1 {
   line-height: 1.55;
 }
 
-.notice,
 .panel {
   border: 1px solid var(--line);
   border-radius: 18px;
   background: var(--panel);
   box-shadow: 0 8px 30px rgb(25 54 38 / 5%);
-}
-
-.notice {
-  display: flex;
-  gap: 14px;
-  margin-bottom: 16px;
-  padding: 17px;
-  border-color: #efdbb2;
-  background: var(--amber-soft);
-  color: #4b390f;
-}
-
-.notice-icon {
-  display: grid;
-  flex: 0 0 25px;
-  width: 25px;
-  height: 25px;
-  place-items: center;
-  border-radius: 50%;
-  background: #e5c27c;
-  font-weight: 800;
-}
-
-.notice h2 {
-  margin: 1px 0 5px;
-  font-size: 0.98rem;
-}
-
-.notice p {
-  margin: 0;
-  font-size: 0.88rem;
-  line-height: 1.5;
 }
 
 .panel {
@@ -136,6 +103,94 @@ h1 {
   letter-spacing: -0.025em;
 }
 
+.actions.poll-actions {
+  display: grid;
+}
+
+.poll-options,
+.response-log,
+.frame-details,
+.bluetooth-details {
+  color: var(--muted);
+  font-size: 0.84rem;
+}
+
+.poll-options summary,
+.response-log summary,
+.frame-details summary,
+.bluetooth-details > summary {
+  width: fit-content;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.poll-options .small-button {
+  margin-top: 10px;
+}
+
+.response-output {
+  min-height: 90px;
+  margin: 12px 0;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #f7faf7;
+  color: var(--ink);
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 0.82rem;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.notification-log {
+  max-height: 200px;
+  margin: 10px 0 0;
+  padding-left: 25px;
+  overflow: auto;
+  color: var(--ink);
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 0.74rem;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.notification-log li + li {
+  margin-top: 8px;
+}
+
+.frame-details,
+.bluetooth-details {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+
+.frame-details[open] > summary,
+.bluetooth-details[open] > summary {
+  margin-bottom: 13px;
+}
+
+.details-title {
+  display: block;
+  color: var(--ink);
+  font-size: 1rem;
+  font-weight: 750;
+}
+
+.bluetooth-details > summary {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.bluetooth-details .eyebrow {
+  display: block;
+  margin-bottom: 4px;
+}
+
 .connection-indicator {
   width: 12px;
   height: 12px;
@@ -158,34 +213,11 @@ label {
   font-weight: 700;
 }
 
-.optional,
 .field-help {
   color: var(--muted);
   font-weight: 400;
 }
 
-input,
-textarea {
-  width: 100%;
-  border: 1px solid #cbd8d0;
-  border-radius: 10px;
-  background: #fbfdfb;
-  color: var(--ink);
-}
-
-input {
-  min-height: 46px;
-  padding: 10px 12px;
-}
-
-textarea {
-  min-height: 61px;
-  padding: 10px 12px;
-  resize: vertical;
-}
-
-input:focus,
-textarea:focus,
 button:focus-visible {
   outline: 3px solid #9ed5b5;
   outline-offset: 2px;
@@ -402,12 +434,6 @@ button:focus-visible {
   gap: 8px;
 }
 
-.service-actions {
-  display: flex;
-  padding: 12px 14px;
-  border-top: 1px solid var(--line);
-}
-
 .small-button {
   min-height: 38px;
   padding: 8px 11px;
@@ -423,12 +449,6 @@ button:focus-visible {
 .small-button:disabled {
   cursor: not-allowed;
   opacity: 0.5;
-}
-
-.poll-button {
-  border-color: #b7d8c3;
-  background: var(--green-soft);
-  color: var(--green-dark);
 }
 
 footer {
@@ -452,11 +472,7 @@ footer p {
     padding: 17px;
   }
 
-  .notice {
-    padding: 14px;
-  }
-
-  .actions {
+    .actions {
     flex-direction: column;
   }
 

@@ -2,9 +2,12 @@
 
 const connectButton = document.querySelector("#connect-button");
 const disconnectButton = document.querySelector("#disconnect-button");
-const nameFilter = document.querySelector("#name-filter");
-const serviceUuidsInput = document.querySelector("#service-uuids");
+const pollNoCrButton = document.querySelector("#poll-no-cr");
+const pollWithCrButton = document.querySelector("#poll-with-cr");
 const statusMessage = document.querySelector("#status");
+const responseStatus = document.querySelector("#response-status");
+const responseOutput = document.querySelector("#response-output");
+const notificationLog = document.querySelector("#notification-log");
 const deviceName = document.querySelector("#device-name");
 const serviceList = document.querySelector("#service-list");
 const serviceCount = document.querySelector("#service-count");
@@ -43,27 +46,18 @@ let connectedDevice = null;
 let fp25Characteristics = [];
 const notificationReadings = new WeakMap();
 const notificationListeners = new WeakSet();
-let notificationBuffer = "";
+const notificationBuffers = new Map();
 let measurementFrameCount = 0;
+let notificationCount = 0;
 
 function setStatus(message, isError = false) {
   statusMessage.textContent = message;
   statusMessage.classList.toggle("error", isError);
 }
 
-function parseServiceUuids(value) {
-  const entries = value.split(",").map((entry) => entry.trim()).filter(Boolean);
-  const services = [];
-
-  for (const entry of entries) {
-    try {
-      services.push(BluetoothUUID.getService(entry));
-    } catch {
-      throw new Error(`"${entry}" is not a recognized service name or UUID.`);
-    }
-  }
-
-  return [...new Set(services)];
+function setResponseStatus(message, isError = false) {
+  responseStatus.textContent = message;
+  responseStatus.classList.toggle("error", isError);
 }
 
 function formatValue(dataView) {
@@ -145,16 +139,28 @@ function renderMeasurements(frame) {
 }
 
 function handleCharacteristicValue(characteristic, dataView) {
+  notificationCount += 1;
   const reading = notificationReadings.get(characteristic);
   if (reading) {
     showValue(reading, dataView);
   }
 
+  const formatted = formatValue(dataView);
+  const channel = characteristic.uuid;
+  responseOutput.textContent = `Channel: ${channel}\nText: ${formatted.text}\nHex: ${formatted.hex}`;
+  measurementTime.textContent = "Response received";
+  const entry = document.createElement("li");
+  entry.textContent = `${channel} · TEXT ${formatted.text} · HEX ${formatted.hex}`;
+  notificationLog.append(entry);
+  while (notificationLog.children.length > 10) {
+    notificationLog.firstElementChild.remove();
+  }
+
   const bytes = new Uint8Array(dataView.buffer, dataView.byteOffset, dataView.byteLength);
   const chunk = new TextDecoder().decode(bytes);
-  const combined = `${notificationBuffer}${chunk}`;
+  const combined = `${notificationBuffers.get(characteristic) || ""}${chunk}`;
   const lines = combined.split(/[\r\n]+/);
-  notificationBuffer = lines.pop() || "";
+  notificationBuffers.set(characteristic, lines.pop() || "");
 
   for (const line of lines) {
     const frame = parseMeasurementFrame(line);
@@ -162,15 +168,18 @@ function handleCharacteristicValue(characteristic, dataView) {
       measurementFrameCount += 1;
       renderMeasurements(frame);
       setStatus(`Updated readings at ${frame.date} ${frame.time}.`);
+      setResponseStatus("Measurement frame received and decoded.");
     }
   }
 
-  const completeFrame = parseMeasurementFrame(notificationBuffer);
+  const bufferedFrame = notificationBuffers.get(characteristic) || "";
+  const completeFrame = parseMeasurementFrame(bufferedFrame);
   if (completeFrame) {
-    notificationBuffer = "";
+    notificationBuffers.set(characteristic, "");
     measurementFrameCount += 1;
     renderMeasurements(completeFrame);
     setStatus(`Updated readings at ${completeFrame.date} ${completeFrame.time}.`);
+    setResponseStatus("Measurement frame received and decoded.");
   }
 }
 
@@ -239,11 +248,15 @@ async function pollFp25(request) {
     throw new Error(`Could not subscribe to FP-25 notifications: ${errors.join("; ")}`);
   }
 
+  responseOutput.textContent = "Waiting for a response…";
+  notificationLog.replaceChildren();
+  notificationBuffers.clear();
+  const initialNotificationCount = notificationCount;
   const initialFrameCount = measurementFrameCount;
   const writeErrors = [];
   for (let index = 0; index < writeChannels.length; index += 1) {
     const channel = writeChannels[index];
-    setStatus(`Trying ${JSON.stringify(request)} on channel ${index + 1} of ${writeChannels.length}…`);
+    setResponseStatus(`Sending read request on channel ${index + 1} of ${writeChannels.length}…`);
     try {
       await writePollRequest(channel, request);
     } catch (error) {
@@ -251,15 +264,21 @@ async function pollFp25(request) {
       continue;
     }
     await wait(600);
-    if (measurementFrameCount > initialFrameCount) {
+    if (notificationCount > initialNotificationCount) {
+      await wait(500);
+      const receivedFrames = measurementFrameCount > initialFrameCount;
+      setResponseStatus(receivedFrames
+        ? "Measurement frame received and decoded."
+        : "Notification received. The raw response is shown above; no complete measurement frame was decoded.");
       return;
     }
   }
 
   const writeSummary = writeErrors.length === writeChannels.length
-    ? `All ${writeChannels.length} poll writes failed: ${writeErrors.join("; ")}`
-    : `No measurement frame received after trying ${writeChannels.length} writable channels${writeErrors.length ? `; ${writeErrors.length} writes failed (${writeErrors.join("; ")})` : ""}`;
-  setStatus(`${writeSummary} for ${JSON.stringify(request)}. Notifications are active; no other commands were sent.`, true);
+    ? `All ${writeChannels.length} writes failed. ${writeErrors.join("; ")}`
+    : `No notification response after trying ${writeChannels.length} writable channels.${writeErrors.length ? ` ${writeErrors.length} writes failed: ${writeErrors.join("; ")}` : ""}`;
+  responseOutput.textContent = "No response notification received.";
+  setResponseStatus(`${writeSummary} Only the read request was sent.`, true);
 }
 
 function showValue(valueElement, dataView) {
@@ -284,6 +303,8 @@ function showValue(valueElement, dataView) {
 function clearServices(message) {
   serviceList.replaceChildren();
   fp25Characteristics = [];
+  pollNoCrButton.disabled = true;
+  pollWithCrButton.disabled = true;
   const empty = document.createElement("p");
   empty.className = "empty-state";
   empty.textContent = message;
@@ -295,10 +316,14 @@ function clearMeasurements(message) {
   frameValueCells.forEach((cell) => {
     cell.textContent = "—";
   });
-  notificationBuffer = "";
+  notificationBuffers.clear();
   measurementFrameCount = 0;
-  measurementTime.textContent = "Waiting for frame";
+  notificationCount = 0;
+  responseOutput.textContent = "No data received yet.";
+  notificationLog.replaceChildren();
+  measurementTime.textContent = "Not received";
   measurementSource.textContent = message;
+  setResponseStatus("Connect to the FP-25, then request readings.");
 }
 
 function handleDisconnected(device) {
@@ -311,8 +336,8 @@ function handleDisconnected(device) {
   disconnectButton.disabled = true;
   connectionIndicator.classList.remove("connected");
   deviceName.hidden = true;
-  clearServices("Disconnected. Connect again to inspect the device.");
-  clearMeasurements("Connect, then try either poll option in the FP-25 service section.");
+  clearServices("Disconnected.");
+  clearMeasurements("No measurement frame received.");
   setStatus("Device disconnected.");
 }
 
@@ -323,8 +348,8 @@ async function renderServices(server) {
   serviceCount.textContent = `${services.length} ${services.length === 1 ? "service" : "services"}`;
 
   if (services.length === 0) {
-    clearServices("No authorized services were found. Add the device's service UUID above and reconnect.");
-    setStatus("Connected, but no authorized services were found.", true);
+    clearServices("No Bluetooth services were found.");
+    setStatus("Connected.");
     return;
   }
 
@@ -365,34 +390,20 @@ async function renderServices(server) {
       renderCharacteristic(card, characteristic);
     }
 
-    if (service.uuid.toLowerCase() === FP25_SERVICE_UUID) {
-      const actions = document.createElement("div");
-      actions.className = "service-actions";
-      for (const [label, request] of [
-        ["Poll readings (with CR)", `${FP25_POLL_REQUEST}\r`],
-        ["Poll readings (no CR)", FP25_POLL_REQUEST],
-      ]) {
-        const pollButton = document.createElement("button");
-        pollButton.className = "small-button poll-button";
-        pollButton.type = "button";
-        pollButton.textContent = label;
-        pollButton.addEventListener("click", async () => {
-          pollButton.disabled = true;
-          try {
-            await pollFp25(request);
-          } catch (error) {
-            setStatus(`Could not poll readings: ${error.message}`, true);
-          } finally {
-            pollButton.disabled = false;
-          }
-        });
-        actions.append(pollButton);
-      }
-      card.append(actions);
-    }
   }
 
-  setStatus("Connected. Try either read-only poll option in the FP-25 service section.");
+  const canWrite = fp25Characteristics.some(
+    (characteristic) => characteristic.properties.write || characteristic.properties.writeWithoutResponse,
+  );
+  const canNotify = fp25Characteristics.some(
+    (characteristic) => characteristic.properties.notify || characteristic.properties.indicate,
+  );
+  pollNoCrButton.disabled = !canWrite || !canNotify;
+  pollWithCrButton.disabled = !canWrite || !canNotify;
+  setStatus("Connected.");
+  setResponseStatus(canWrite && canNotify
+    ? "Ready. Request readings to send the observed read-only command."
+    : "The FP-25 measurement service does not expose both writable and notification channels.", !canWrite || !canNotify);
 }
 
 function renderCharacteristic(serviceCard, characteristic) {
@@ -475,24 +486,14 @@ async function connect() {
     return;
   }
 
-  let optionalServices;
-  try {
-    optionalServices = parseServiceUuids(serviceUuidsInput.value);
-  } catch (error) {
-    setStatus(error.message, true);
-    return;
-  }
-
-  const prefix = nameFilter.value.trim();
-  const requestOptions = prefix
-    ? { filters: [{ namePrefix: prefix }], optionalServices }
-    : { acceptAllDevices: true, optionalServices };
-
   connectButton.disabled = true;
   setStatus("Choose a device in the Bluetooth prompt…");
 
   try {
-    const device = await navigator.bluetooth.requestDevice(requestOptions);
+    const device = await navigator.bluetooth.requestDevice({
+      acceptAllDevices: true,
+      optionalServices: ["generic_access", "device_information", FP25_SERVICE_UUID],
+    });
     if (!device.gatt) {
       throw new Error("The selected device does not expose a GATT server.");
     }
@@ -505,7 +506,7 @@ async function connect() {
     disconnectButton.disabled = false;
     deviceName.textContent = `Connected device: ${device.name || "Unnamed device"}`;
     deviceName.hidden = false;
-    clearMeasurements("Tap either poll option in the FP-25 service section.");
+    clearMeasurements("No measurement frame received.");
     await renderServices(server);
   } catch (error) {
     if (error.name === "NotFoundError") {
@@ -523,11 +524,29 @@ async function connect() {
     connectionIndicator.classList.remove("connected");
     deviceName.hidden = true;
     deviceName.textContent = "";
-    clearServices("Could not inspect the selected device. Check its service UUIDs and reconnect.");
+    clearServices("Could not inspect the selected device.");
+  }
+}
+
+async function poll(request) {
+  pollNoCrButton.disabled = true;
+  pollWithCrButton.disabled = true;
+  try {
+    await pollFp25(request);
+  } catch (error) {
+    setResponseStatus(`Could not request readings: ${error.message}`, true);
+  } finally {
+    const canPoll = connectedDevice?.gatt?.connected &&
+      fp25Characteristics.some((characteristic) => characteristic.properties.write || characteristic.properties.writeWithoutResponse) &&
+      fp25Characteristics.some((characteristic) => characteristic.properties.notify || characteristic.properties.indicate);
+    pollNoCrButton.disabled = !canPoll;
+    pollWithCrButton.disabled = !canPoll;
   }
 }
 
 connectButton.addEventListener("click", connect);
+pollNoCrButton.addEventListener("click", () => poll(FP25_POLL_REQUEST));
+pollWithCrButton.addEventListener("click", () => poll(`${FP25_POLL_REQUEST}\r`));
 disconnectButton.addEventListener("click", () => {
   if (connectedDevice?.gatt?.connected) {
     connectedDevice.gatt.disconnect();
