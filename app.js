@@ -251,40 +251,33 @@ async function pollFp25(request) {
   responseOutput.textContent = "Waiting for a response…";
   notificationLog.replaceChildren();
   notificationBuffers.clear();
-  const initialNotificationCount = notificationCount;
   const initialFrameCount = measurementFrameCount;
-  const writeErrors = [];
-  for (let index = 0; index < writeChannels.length; index += 1) {
-    const channel = writeChannels[index];
-    setResponseStatus(`Sending read request on channel ${index + 1} of ${writeChannels.length}…`);
-    try {
-      await writePollRequest(channel, request);
-    } catch (error) {
-      writeErrors.push(`${channel.uuid}: ${error instanceof Error ? error.message : String(error)}`);
-      continue;
-    }
-    await wait(600);
-    if (measurementFrameCount > initialFrameCount) {
-      setResponseStatus("Measurement frame received and decoded.");
-      return;
-    }
+  const initialNotificationCount = notificationCount;
+  const channel = writeChannels[0];
+  setResponseStatus(`Sending one read request on ${channel.uuid}…`);
+  try {
+    await writePollRequest(channel, request);
+  } catch (error) {
+    throw new Error(`Read request write failed on ${channel.uuid}: ${error instanceof Error ? error.message : String(error)}`);
   }
 
-  await wait(500);
+  await wait(1500);
+  if (measurementFrameCount > initialFrameCount) {
+    setResponseStatus("Measurement frame received and decoded.");
+    return;
+  }
+
   const notificationsReceived = notificationCount - initialNotificationCount;
   if (notificationsReceived > 0) {
     setResponseStatus(
-      `${notificationsReceived} notification${notificationsReceived === 1 ? "" : "s"} received, but none contained a complete measurement frame. Raw data is shown above and in the notification log.`,
+      `${notificationsReceived} notification${notificationsReceived === 1 ? "" : "s"} received from one read request, but none contained a complete measurement frame. Raw data is shown above and in the notification log.`,
       true,
     );
     return;
   }
 
-  const writeSummary = writeErrors.length === writeChannels.length
-    ? `All ${writeChannels.length} writes failed. ${writeErrors.join("; ")}`
-    : `No notification response after trying ${writeChannels.length} writable channels.${writeErrors.length ? ` ${writeErrors.length} writes failed: ${writeErrors.join("; ")}` : ""}`;
   responseOutput.textContent = "No response notification received.";
-  setResponseStatus(`${writeSummary} Only the read request was sent.`, true);
+  setResponseStatus(`No notification response to the read request on ${channel.uuid}. No other channels were written.`, true);
 }
 
 function showValue(valueElement, dataView) {
