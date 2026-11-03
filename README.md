@@ -14,6 +14,8 @@ A small, read-only Web Bluetooth inspector intended to run as a static GitHub Pa
 
 The inspector displays raw bytes as hexadecimal and best-effort UTF-8 text. It intentionally has no write operation. Device selection and BLE data remain in the browser; this site has no backend.
 
+The footer shows the Git commit hash and subject used for the deployed build. On each visit, the page checks a cache-busted build manifest and automatically reloads if Pages is serving an older version. The deployment publishes the current `main` build at one Pages URL; it does not create separate public URLs for older builds.
+
 ## Requirements and limitations
 
 - Web Bluetooth requires HTTPS and a supported browser. Android Chrome is a supported target; iOS browsers do not expose Web Bluetooth.

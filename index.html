@@ -5,9 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#102420">
     <meta name="description" content="A read-only Bluetooth Low Energy GATT inspector for Android Chrome.">
+    <meta name="build-version" content="__BUILD_VERSION__">
+    <meta name="build-message" content="__BUILD_MESSAGE__">
     <title>FP-25 Bluetooth Inspector</title>
-    <link rel="stylesheet" href="styles.css">
-    <script src="app.js" defer></script>
   </head>
   <body>
     <main class="shell">
@@ -73,7 +73,88 @@
       <footer>
         <p>Read-only: this page never writes to the device. Data stays in your browser.</p>
         <p>Requires a secure HTTPS page and a browser with Web Bluetooth, such as Chrome on Android.</p>
+        <p>Git <span id="build-version">checking…</span> — <span id="build-message"></span></p>
+        <p id="update-status" role="status" aria-live="polite"></p>
       </footer>
     </main>
+    <script>
+      (() => {
+        const versionPattern = /^[a-f0-9]{40,64}$/i;
+        const versionMeta = document.querySelector('meta[name="build-version"]');
+        const messageMeta = document.querySelector('meta[name="build-message"]');
+        const versionElement = document.querySelector("#build-version");
+        const messageElement = document.querySelector("#build-message");
+        const updateStatus = document.querySelector("#update-status");
+        const pageVersion = versionMeta.content;
+        const pageMessage = messageMeta.content;
+
+        function showBuild(version, message) {
+          versionElement.textContent = version.slice(0, 12);
+          versionElement.title = version;
+          messageElement.textContent = message;
+        }
+
+        function loadAssets(version) {
+          const stylesheet = document.createElement("link");
+          stylesheet.rel = "stylesheet";
+          stylesheet.href = `styles.css?v=${encodeURIComponent(version)}`;
+          document.head.append(stylesheet);
+
+          const script = document.createElement("script");
+          script.src = `app.js?v=${encodeURIComponent(version)}`;
+          document.body.append(script);
+        }
+
+        async function checkForLatestBuild() {
+          if (!versionPattern.test(pageVersion)) {
+            showBuild("development", "local build");
+            loadAssets("development");
+            return;
+          }
+
+          showBuild(pageVersion, pageMessage);
+
+          try {
+            const response = await fetch(`version.json?check=${Date.now()}`, { cache: "no-store" });
+            if (!response.ok) {
+              throw new Error(`Build check returned HTTP ${response.status}.`);
+            }
+
+            const latest = await response.json();
+            if (!versionPattern.test(latest.version) || typeof latest.message !== "string") {
+              throw new Error("The latest build manifest is invalid.");
+            }
+
+            showBuild(latest.version, latest.message);
+
+            if (latest.version !== pageVersion) {
+              const url = new URL(location.href);
+              if (url.searchParams.get("v") !== latest.version) {
+                updateStatus.textContent = "A newer build is available. Refreshing…";
+                url.searchParams.set("v", latest.version);
+                location.replace(url);
+                return;
+              }
+
+              updateStatus.textContent = "New build assets loaded; refresh again if the page layout has not updated.";
+            } else {
+              updateStatus.textContent = "Up to date.";
+            }
+
+            loadAssets(latest.version);
+          } catch (error) {
+            updateStatus.textContent = `Could not check for updates: ${error.message}`;
+            loadAssets(pageVersion);
+          }
+        }
+
+        void checkForLatestBuild();
+        window.addEventListener("pageshow", (event) => {
+          if (event.persisted) {
+            location.reload();
+          }
+        });
+      })();
+    </script>
   </body>
 </html>
