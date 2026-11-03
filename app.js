@@ -14,7 +14,7 @@ const measurementTime = document.querySelector("#measurement-time");
 const measurementSource = document.querySelector("#measurement-source");
 
 const FP25_SERVICE_UUID = "c5e69884-105c-41a2-ab07-ecd590e24814";
-const FP25_POLL_REQUEST = "A $$R16\r";
+const FP25_POLL_REQUEST = "A $$R16";
 
 let connectedDevice = null;
 let fp25Characteristics = [];
@@ -187,8 +187,8 @@ async function enableNotifications(characteristic) {
   attachNotificationListener(characteristic);
 }
 
-async function writePollRequest(characteristic) {
-  const payload = new TextEncoder().encode(FP25_POLL_REQUEST);
+async function writePollRequest(characteristic, request) {
+  const payload = new TextEncoder().encode(request);
   if (characteristic.properties.write && characteristic.writeValueWithResponse) {
     await characteristic.writeValueWithResponse(payload);
   } else if (
@@ -207,7 +207,7 @@ function wait(milliseconds) {
   return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
 
-async function pollFp25() {
+async function pollFp25(request) {
   const writeChannels = fp25Characteristics.filter(
     (characteristic) => characteristic.properties.write || characteristic.properties.writeWithoutResponse,
   );
@@ -234,9 +234,9 @@ async function pollFp25() {
   const writeErrors = [];
   for (let index = 0; index < writeChannels.length; index += 1) {
     const channel = writeChannels[index];
-    setStatus(`Trying the fixed A $$R16 read request on channel ${index + 1} of ${writeChannels.length}…`);
+    setStatus(`Trying ${JSON.stringify(request)} on channel ${index + 1} of ${writeChannels.length}…`);
     try {
-      await writePollRequest(channel);
+      await writePollRequest(channel, request);
     } catch (error) {
       writeErrors.push(`${channel.uuid}: ${error instanceof Error ? error.message : String(error)}`);
       continue;
@@ -250,7 +250,7 @@ async function pollFp25() {
   const writeSummary = writeErrors.length === writeChannels.length
     ? `All ${writeChannels.length} poll writes failed: ${writeErrors.join("; ")}`
     : `No measurement frame received after trying ${writeChannels.length} writable channels${writeErrors.length ? `; ${writeErrors.length} writes failed (${writeErrors.join("; ")})` : ""}`;
-  setStatus(`${writeSummary}. Notifications are active; no other commands were sent.`, true);
+  setStatus(`${writeSummary} for ${JSON.stringify(request)}. Notifications are active; no other commands were sent.`, true);
 }
 
 function showValue(valueElement, dataView) {
@@ -305,7 +305,7 @@ function handleDisconnected(device) {
   connectionIndicator.classList.remove("connected");
   deviceName.hidden = true;
   clearServices("Disconnected. Connect again to inspect the device.");
-  clearMeasurements("Connect, then tap “Poll FP-25 readings” in the FP-25 service section.");
+  clearMeasurements("Connect, then try either poll option in the FP-25 service section.");
   setStatus("Device disconnected.");
 }
 
@@ -361,26 +361,31 @@ async function renderServices(server) {
     if (service.uuid.toLowerCase() === FP25_SERVICE_UUID) {
       const actions = document.createElement("div");
       actions.className = "service-actions";
-      const pollButton = document.createElement("button");
-      pollButton.className = "small-button poll-button";
-      pollButton.type = "button";
-      pollButton.textContent = "Poll FP-25 readings (A $$R16)";
-      pollButton.addEventListener("click", async () => {
-        pollButton.disabled = true;
-        try {
-          await pollFp25();
-        } catch (error) {
-          setStatus(`Could not poll readings: ${error.message}`, true);
-        } finally {
-          pollButton.disabled = false;
-        }
-      });
-      actions.append(pollButton);
+      for (const [label, request] of [
+        ["Poll readings (with CR)", `${FP25_POLL_REQUEST}\r`],
+        ["Poll readings (no CR)", FP25_POLL_REQUEST],
+      ]) {
+        const pollButton = document.createElement("button");
+        pollButton.className = "small-button poll-button";
+        pollButton.type = "button";
+        pollButton.textContent = label;
+        pollButton.addEventListener("click", async () => {
+          pollButton.disabled = true;
+          try {
+            await pollFp25(request);
+          } catch (error) {
+            setStatus(`Could not poll readings: ${error.message}`, true);
+          } finally {
+            pollButton.disabled = false;
+          }
+        });
+        actions.append(pollButton);
+      }
       card.append(actions);
     }
   }
 
-  setStatus("Connected. Tap “Poll FP-25 readings” to try the fixed read request on its Bluetooth channels.");
+  setStatus("Connected. Try either read-only poll option in the FP-25 service section.");
 }
 
 function renderCharacteristic(serviceCard, characteristic) {
@@ -493,7 +498,7 @@ async function connect() {
     disconnectButton.disabled = false;
     deviceName.textContent = `Connected device: ${device.name || "Unnamed device"}`;
     deviceName.hidden = false;
-    clearMeasurements("Tap “Poll FP-25 readings” in the FP-25 service section.");
+    clearMeasurements("Tap either poll option in the FP-25 service section.");
     await renderServices(server);
   } catch (error) {
     if (error.name === "NotFoundError") {

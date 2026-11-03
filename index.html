@@ -22,9 +22,10 @@
         <div>
           <h2 id="prototype-title">Read-only measurement polling</h2>
           <p>
-            Poll subscribes to FP-25 notifications, then tries the observed <code>A $$R16</code> read
-            request on each writable service channel. It stops when a measurement frame arrives and
-            never sends setpoints or changes device settings.
+            Poll subscribes to FP-25 notifications, then tries the observed <code>A $$R16</code>
+            request on each writable service channel. Choose with or without the trailing carriage
+            return to test BLE framing. Both stop when a measurement frame arrives; neither changes
+            device settings.
           </p>
         </div>
       </section>
@@ -65,7 +66,7 @@
           <span id="measurement-time" class="count-badge">Waiting for poll</span>
         </div>
         <div id="measurements" class="measurement-grid">
-          <p class="empty-state">Connect, then tap “Poll FP-25 readings” in the FP-25 service section.</p>
+          <p class="empty-state">Connect, then try a poll option in the FP-25 service section.</p>
         </div>
         <p id="measurement-source" class="field-help"></p>
       </section>
