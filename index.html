@@ -67,12 +67,12 @@
         </div>
         <p class="field-help frame-help">
           Field layout is based on FlowVision's <code>A??D*</code> response. Values appear when a valid
-          measurement frame arrives from the meter.
+          measurement frame arrives from the meter; a dash means that field was not present in the frame.
         </p>
         <div class="frame-table-scroll" role="region" aria-label="FP-25 data frame fields" tabindex="0">
           <table class="frame-table">
             <thead>
-              <tr><th scope="col">ID</th><th scope="col">Name</th><th scope="col">Type</th><th scope="col">Value</th><th scope="col">Notes / units</th></tr>
+              <tr><th scope="col">ID</th><th scope="col">Code</th><th scope="col">Name</th><th scope="col">Type</th><th scope="col">Value</th><th scope="col">Width</th><th scope="col">Notes</th></tr>
             </thead>
             <tbody id="frame-rows"></tbody>
           </table>

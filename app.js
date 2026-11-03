@@ -16,27 +16,27 @@ const measurementSource = document.querySelector("#measurement-source");
 const FP25_SERVICE_UUID = "c5e69884-105c-41a2-ab07-ecd590e24814";
 const FP25_POLL_REQUEST = "A $$R16";
 const FRAME_FIELDS = [
-  ["D01", "Unit ID", "string", 0, ""],
-  ["D02", "Measurement ID", "decimal", 1, ""],
-  ["D03", "User Date", "date", 2, "y-m-d"],
-  ["D04", "User Time", "time", 3, "h:m:s"],
-  ["D05", "Abs Press", "s decimal", 4, "mmHgA @ 0°C"],
-  ["D06", "Gage Press", "s decimal", 5, "mmHgG @ 0°C"],
-  ["D07", "Baro Press", "s decimal", 6, "hPaA"],
-  ["D08", "Temp", "s decimal", 7, "°C"],
-  ["D09", "Temp Source", "string", 8, ""],
-  ["D10", "Vol Flow", "s decimal", 9, "LPM"],
-  ["D11", "Std Flow", "s decimal", 10, "SLPM"],
-  ["D12", "Rel Hum", "decimal", 11, "%"],
-  ["D13", "Gas", "string", 12, ""],
-  ["D14", "*Error", "string", 13, "ADC"],
-  ["D15", "*Status", "string", 14, "POV"],
-  ["D16", "*Status", "string", 15, "TOV"],
-  ["D17", "*Status", "string", 16, "VOV"],
-  ["D18", "*Status", "string", 17, "MOV"],
-  ["D19", "*Status", "string", 18, "TMF"],
-  ["D20", "*Status", "string", 19, "OVR"],
-  ["D21", "*Status", "string", 20, "LCK"],
+  ["D01", "700", "Unit ID", "string", 0, "1", ""],
+  ["D02", "801", "Measurement ID", "decimal", 1, "6/0", ""],
+  ["D03", "400", "User Date", "date", 2, "4/0 002 02", "y-m-d"],
+  ["D04", "392", "User Time", "time", 3, "4/0 002 02", "h:m:s"],
+  ["D05", "002", "Abs Press", "s decimal", 4, "7/1 014 02", "mmHgA @ 0°C"],
+  ["D06", "006", "Gage Press", "s decimal", 5, "7/1 014 02", "mmHgG @ 0°C"],
+  ["D07", "015", "Baro Press", "s decimal", 6, "7/0 003 02", "hPaA"],
+  ["D08", "020", "Temp", "s decimal", 7, "7/2 002 02", "°C"],
+  ["D09", "021", "Temp Source", "string", 8, "1/1", ""],
+  ["D10", "017", "Vol Flow", "s decimal", 9, "7/3 007 02", "LPM"],
+  ["D11", "005", "Std Flow", "s decimal", 10, "7/3 007 02", "SLPM"],
+  ["D12", "025", "Rel Hum", "decimal", 11, "3/0 003 02", "%"],
+  ["D13", "703", "Gas", "string", 12, "7/7", ""],
+  ["D14", "701", "*Error", "string", 13, "3", "ADC"],
+  ["D15", "702", "*Status", "string", 14, "3", "POV"],
+  ["D16", "702", "*Status", "string", 15, "3", "TOV"],
+  ["D17", "702", "*Status", "string", 16, "3", "VOV"],
+  ["D18", "702", "*Status", "string", 17, "3", "MOV"],
+  ["D19", "702", "*Status", "string", 18, "3", "TMF"],
+  ["D20", "702", "*Status", "string", 19, "3", "OVR"],
+  ["D21", "702", "*Status", "string", 20, "3", "LCK"],
 ];
 
 let connectedDevice = null;
@@ -112,9 +112,9 @@ function parseMeasurementFrame(frame) {
 }
 
 function renderFrameField(field) {
-  const [id, name, type, valueIndex, notes] = field;
+  const [id, code, name, type, valueIndex, width, notes] = field;
   const row = document.createElement("tr");
-  for (const value of [id, name, type]) {
+  for (const value of [id, code, name, type]) {
     const cell = document.createElement("td");
     cell.textContent = value;
     row.append(cell);
@@ -124,6 +124,9 @@ function renderFrameField(field) {
   valueCell.dataset.fieldIndex = String(valueIndex);
   valueCell.textContent = "—";
   row.append(valueCell);
+  const widthCell = document.createElement("td");
+  widthCell.textContent = width;
+  row.append(widthCell);
   const notesCell = document.createElement("td");
   notesCell.textContent = notes;
   row.append(notesCell);
