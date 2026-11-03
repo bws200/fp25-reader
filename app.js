@@ -46,7 +46,7 @@ let connectedDevice = null;
 let fp25Characteristics = [];
 const notificationReadings = new WeakMap();
 const notificationListeners = new WeakSet();
-const notificationBuffers = new Map();
+let notificationBuffer = "";
 let measurementFrameCount = 0;
 let notificationCount = 0;
 
@@ -158,26 +158,30 @@ function handleCharacteristicValue(characteristic, dataView) {
 
   const bytes = new Uint8Array(dataView.buffer, dataView.byteOffset, dataView.byteLength);
   const chunk = new TextDecoder().decode(bytes);
-  const combined = `${notificationBuffers.get(characteristic) || ""}${chunk}`;
+  const combined = `${notificationBuffer}${chunk}`;
   const lines = combined.split(/[\r\n]+/);
-  notificationBuffers.set(characteristic, lines.pop() || "");
+  notificationBuffer = lines.pop() || "";
 
   for (const line of lines) {
     const frame = parseMeasurementFrame(line);
     if (frame) {
       measurementFrameCount += 1;
       renderMeasurements(frame);
+      responseOutput.textContent = `Measurement frame:\n${line}`;
+      measurementTime.textContent = `${frame.date} ${frame.time}`;
       setStatus(`Updated readings at ${frame.date} ${frame.time}.`);
       setResponseStatus("Measurement frame received and decoded.");
     }
   }
 
-  const bufferedFrame = notificationBuffers.get(characteristic) || "";
-  const completeFrame = parseMeasurementFrame(bufferedFrame);
+  const completeFrame = parseMeasurementFrame(notificationBuffer);
   if (completeFrame) {
-    notificationBuffers.set(characteristic, "");
+    const line = notificationBuffer;
+    notificationBuffer = "";
     measurementFrameCount += 1;
     renderMeasurements(completeFrame);
+    responseOutput.textContent = `Measurement frame:\n${line}`;
+    measurementTime.textContent = `${completeFrame.date} ${completeFrame.time}`;
     setStatus(`Updated readings at ${completeFrame.date} ${completeFrame.time}.`);
     setResponseStatus("Measurement frame received and decoded.");
   }
@@ -253,7 +257,7 @@ async function pollFp25(request) {
 
   responseOutput.textContent = "Waiting for a response…";
   notificationLog.replaceChildren();
-  notificationBuffers.clear();
+  notificationBuffer = "";
   const initialFrameCount = measurementFrameCount;
   const initialNotificationCount = notificationCount;
   setResponseStatus(`Sending one read request on ${commandChannel.uuid}…`);
@@ -316,7 +320,7 @@ function clearMeasurements(message) {
   frameValueCells.forEach((cell) => {
     cell.textContent = "—";
   });
-  notificationBuffers.clear();
+  notificationBuffer = "";
   measurementFrameCount = 0;
   notificationCount = 0;
   responseOutput.textContent = "No data received yet.";

@@ -10,7 +10,7 @@ The app sends the FlowVision BLE terminal's observed live-read request `A` with 
 2. The included workflow deploys the site whenever `main` is updated. After its first successful run, use the Pages URL shown in the repository's **Settings → Pages**.
 3. Open the published HTTPS Pages URL in Chrome on Android.
 4. Choose the FP-25 and tap **Request readings**. The app subscribes to notifications and sends one `A` request with a trailing carriage return on the observed `...e200` command channel, using BLE write-without-response when available.
-5. Notifications are shown as text and hex, even if they are not complete measurement frames. When a measurement frame arrives, the app decodes the values in **Decoded data frame fields**. Open **Bluetooth services** only for channel-level details.
+5. Notifications are shown as text and hex, even if they are not complete measurement frames. The FP-25 may split one measurement line across several notification characteristics; the app joins incoming text chunks in arrival order, then decodes the completed frame in **Decoded data frame fields**. Open **Bluetooth services** only for channel-level details.
 
 Device selection and BLE data remain in the browser; this site has no backend.
 
