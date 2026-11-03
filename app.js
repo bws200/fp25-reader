@@ -6,39 +6,37 @@ const pollReadingsButton = document.querySelector("#poll-readings");
 const autoPollButton = document.querySelector("#auto-poll-button");
 const statusMessage = document.querySelector("#status");
 const responseStatus = document.querySelector("#response-status");
-const responseOutput = document.querySelector("#response-output");
 const notificationLog = document.querySelector("#notification-log");
 const deviceName = document.querySelector("#device-name");
 const serviceList = document.querySelector("#service-list");
 const serviceCount = document.querySelector("#service-count");
 const connectionIndicator = document.querySelector("#connection-indicator");
 const frameRows = document.querySelector("#frame-rows");
-const measurementTime = document.querySelector("#measurement-time");
-const measurementSource = document.querySelector("#measurement-source");
 
 const FP25_SERVICE_UUID = "c5e69884-105c-41a2-ab07-ecd590e24814";
 const FP25_COMMAND_CHARACTERISTIC_UUID = "aeafdf8b-33bc-4920-a092-1a1e4840e200";
 const FP25_POLL_REQUEST = "A";
 const FRAME_FIELDS = [
-  ["D01", "700", "Unit ID", "string", 0, "1", ""],
-  ["D02", "801", "Measurement ID", "decimal", 1, "6/0", ""],
-  ["D03", "400", "User Date", "date", 2, "4/0 002 02", "y-m-d"],
-  ["D04", "392", "User Time", "time", 3, "4/0 002 02", "h:m:s"],
-  ["D05", "002", "Abs Press", "s decimal", 4, "7/1 014 02", "mmHgA @ 0°C"],
-  ["D06", "006", "Gage Press", "s decimal", 5, "7/1 014 02", "mmHgG @ 0°C"],
-  ["D07", "015", "Baro Press", "s decimal", 6, "7/0 003 02", "hPaA"],
-  ["D08", "020", "Temp", "s decimal", 7, "7/2 002 02", "°C"],
-  ["D09", "021", "Temp Source", "string", 8, "1/1", ""],
-  ["D10", "017", "Vol Flow", "s decimal", 9, "7/3 007 02", "LPM"],
-  ["D11", "005", "Std Flow", "s decimal", 10, "7/3 007 02", "SLPM"],
-  ["D12", "025", "Rel Hum", "decimal", 11, "3/0 003 02", "%"],
-  ["D13", "703", "Gas", "string", 12, "7/7", ""],
+  ["Unit ID", 0, ""],
+  ["Measurement ID", 1, ""],
+  ["Date", 2, ""],
+  ["Time", 3, ""],
+  ["Abs Press", 4, "mmHgA @ 0°C"],
+  ["Gage Press", 5, "mmHgG @ 0°C"],
+  ["Baro Press", 6, "hPaA"],
+  ["Temp", 7, "°C"],
+  ["Temp Source", 8, ""],
+  ["Vol Flow", 9, "LPM"],
+  ["Std Flow", 10, "SLPM"],
+  ["Rel Hum", 11, "%"],
+  ["Gas", 12, ""],
 ];
 
 let connectedDevice = null;
 let fp25Characteristics = [];
 const notificationReadings = new WeakMap();
 const notificationListeners = new WeakSet();
+const notificationSubscriptions = new WeakSet();
 let notificationBuffer = "";
 let measurementFrameCount = 0;
 let notificationCount = 0;
@@ -156,24 +154,20 @@ function parseMeasurementFrame(frame) {
 }
 
 function renderFrameField(field) {
-  const [id, code, name, type, valueIndex, width, notes] = field;
+  const [name, valueIndex, units] = field;
   const row = document.createElement("tr");
-  for (const value of [id, code, name, type]) {
-    const cell = document.createElement("td");
-    cell.textContent = value;
-    row.append(cell);
-  }
+  const nameCell = document.createElement("th");
+  nameCell.scope = "row";
+  nameCell.textContent = name;
+  row.append(nameCell);
   const valueCell = document.createElement("td");
   valueCell.className = "frame-value";
-  valueCell.dataset.fieldIndex = String(valueIndex);
   valueCell.textContent = "—";
   row.append(valueCell);
-  const widthCell = document.createElement("td");
-  widthCell.textContent = width;
-  row.append(widthCell);
-  const notesCell = document.createElement("td");
-  notesCell.textContent = notes;
-  row.append(notesCell);
+  const unitsCell = document.createElement("td");
+  unitsCell.className = "frame-units";
+  unitsCell.textContent = units;
+  row.append(unitsCell);
   frameRows.append(row);
   return valueCell;
 }
@@ -184,8 +178,6 @@ function renderMeasurements(frame) {
   frameValueCells.forEach((cell, index) => {
     cell.textContent = frame.fields[index] || "—";
   });
-  measurementTime.textContent = `${frame.date} ${frame.time}`;
-  measurementSource.textContent = `Unit ${frame.unitId} · measurement ${frame.measurementId}`;
 }
 
 function handleCharacteristicValue(characteristic, dataView) {
@@ -197,8 +189,6 @@ function handleCharacteristicValue(characteristic, dataView) {
 
   const formatted = formatValue(dataView);
   const channel = characteristic.uuid;
-  responseOutput.textContent = `Channel: ${channel}\nText: ${formatted.text}\nHex: ${formatted.hex}`;
-  measurementTime.textContent = "Response received";
   const entry = document.createElement("li");
   entry.textContent = `${channel} · TEXT ${formatted.text} · HEX ${formatted.hex}`;
   notificationLog.append(entry);
@@ -217,8 +207,6 @@ function handleCharacteristicValue(characteristic, dataView) {
     if (frame) {
       measurementFrameCount += 1;
       renderMeasurements(frame);
-      responseOutput.textContent = `Measurement frame:\n${line}`;
-      measurementTime.textContent = `${frame.date} ${frame.time}`;
       setStatus(`Updated readings at ${frame.date} ${frame.time}.`);
       setResponseStatus(autoPolling
         ? "Auto update running; next request follows this frame."
@@ -229,12 +217,9 @@ function handleCharacteristicValue(characteristic, dataView) {
 
   const completeFrame = parseMeasurementFrame(notificationBuffer);
   if (completeFrame) {
-    const line = notificationBuffer;
     notificationBuffer = "";
     measurementFrameCount += 1;
     renderMeasurements(completeFrame);
-    responseOutput.textContent = `Measurement frame:\n${line}`;
-    measurementTime.textContent = `${completeFrame.date} ${completeFrame.time}`;
     setStatus(`Updated readings at ${completeFrame.date} ${completeFrame.time}.`);
     setResponseStatus(autoPolling
       ? "Auto update running; next request follows this frame."
@@ -261,7 +246,11 @@ async function enableNotifications(characteristic) {
   if (!characteristic.properties.notify && !characteristic.properties.indicate) {
     return;
   }
+  if (notificationSubscriptions.has(characteristic)) {
+    return;
+  }
   await characteristic.startNotifications();
+  notificationSubscriptions.add(characteristic);
   attachNotificationListener(characteristic);
 }
 
@@ -299,51 +288,49 @@ async function enableFp25Notifications() {
     throw new Error("The FP-25 measurement service has no notification characteristics.");
   }
 
-  const subscriptionResults = await Promise.allSettled(notifyChannels.map(enableNotifications));
-  const activeChannels = subscriptionResults
-    .map((result, index) => result.status === "fulfilled" ? notifyChannels[index] : null)
-    .filter((characteristic) => characteristic !== null);
-  if (activeChannels.length === 0) {
-    const errors = subscriptionResults
-      .filter((result) => result.status === "rejected")
-      .map((result) => result.reason instanceof Error ? result.reason.message : String(result.reason));
-    throw new Error(`Could not subscribe to FP-25 notifications: ${errors.join("; ")}`);
+  const errors = [];
+  let activeChannels = 0;
+  for (const characteristic of notifyChannels) {
+    try {
+      await enableNotifications(characteristic);
+      activeChannels += 1;
+    } catch (error) {
+      errors.push(`${characteristic.uuid}: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+  if (errors.length > 0) {
+    throw new Error(`Could not subscribe to every FP-25 notification channel: ${errors.join("; ")}`);
+  }
+  if (activeChannels === 0) {
+    throw new Error("Could not subscribe to FP-25 notifications: no channels were enabled.");
   }
 }
 
 async function pollFp25(request) {
   const commandChannel = getCommandChannel();
   await enableFp25Notifications();
-  responseOutput.textContent = "Waiting for a response…";
   notificationLog.replaceChildren();
-  notificationBuffer = "";
-  const initialFrameCount = measurementFrameCount;
-  const initialNotificationCount = notificationCount;
-  const frameWaiter = waitForMeasurementFrame();
-  setResponseStatus(`Sending one read request on ${commandChannel.uuid}…`);
-  try {
-    await writePollRequest(commandChannel, request);
-  } catch (error) {
-    frameWaiter.cancel();
-    throw new Error(`Read request write failed on ${commandChannel.uuid}: ${error instanceof Error ? error.message : String(error)}`);
+  const maxAttempts = 5;
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    notificationBuffer = "";
+    const frameWaiter = waitForMeasurementFrame(2000);
+    setResponseStatus(attempt === 1
+      ? "Requesting readings…"
+      : `No complete frame yet; retrying (${attempt}/${maxAttempts})…`);
+    try {
+      await writePollRequest(commandChannel, request);
+    } catch (error) {
+      frameWaiter.cancel();
+      throw new Error(`Read request write failed on ${commandChannel.uuid}: ${error instanceof Error ? error.message : String(error)}`);
+    }
+
+    if (await frameWaiter.promise) {
+      setResponseStatus("Readings updated.");
+      return;
+    }
   }
 
-  if (await frameWaiter.promise || measurementFrameCount > initialFrameCount) {
-    setResponseStatus("Measurement frame received and decoded.");
-    return;
-  }
-
-  const notificationsReceived = notificationCount - initialNotificationCount;
-  if (notificationsReceived > 0) {
-    setResponseStatus(
-      `${notificationsReceived} notification${notificationsReceived === 1 ? "" : "s"} received from one read request, but none contained a complete measurement frame. Raw data is shown above and in the notification log.`,
-      true,
-    );
-    return;
-  }
-
-  responseOutput.textContent = "No response notification received.";
-  setResponseStatus(`No notification response to the read request on ${commandChannel.uuid}. No other channels were written.`, true);
+  setResponseStatus("No complete reading received after five requests. Check the connection and try again.", true);
 }
 
 function stopAutoPolling(updateStatus = true) {
@@ -414,7 +401,6 @@ async function toggleAutoPolling() {
     await enableFp25Notifications();
     notificationBuffer = "";
     notificationLog.replaceChildren();
-    responseOutput.textContent = "Waiting for measurement frames…";
     autoPolling = true;
     autoPollButton.textContent = "Stop auto update";
     autoPollStarting = false;
@@ -463,17 +449,14 @@ function clearServices(message) {
   serviceCount.textContent = "0 services";
 }
 
-function clearMeasurements(message) {
+function clearMeasurements() {
   frameValueCells.forEach((cell) => {
     cell.textContent = "—";
   });
   notificationBuffer = "";
   measurementFrameCount = 0;
   notificationCount = 0;
-  responseOutput.textContent = "No data received yet.";
   notificationLog.replaceChildren();
-  measurementTime.textContent = "Not received";
-  measurementSource.textContent = message;
   setResponseStatus("Connect to the FP-25, then request readings.");
 }
 
@@ -488,7 +471,7 @@ function handleDisconnected(device) {
   connectionIndicator.classList.remove("connected");
   deviceName.hidden = true;
   clearServices("Disconnected.");
-  clearMeasurements("No measurement frame received.");
+  clearMeasurements();
   setStatus("Device disconnected.");
 }
 
@@ -657,7 +640,7 @@ async function connect() {
     disconnectButton.disabled = false;
     deviceName.textContent = `Connected device: ${device.name || "Unnamed device"}`;
     deviceName.hidden = false;
-    clearMeasurements("No measurement frame received.");
+    clearMeasurements();
     await renderServices(server);
   } catch (error) {
     if (error.name === "NotFoundError") {

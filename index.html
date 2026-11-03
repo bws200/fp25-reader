@@ -41,34 +41,24 @@
             <p class="eyebrow">READ DATA</p>
             <h2 id="response-title">Meter response</h2>
           </div>
-          <span id="measurement-time" class="count-badge">Not received</span>
         </div>
         <div class="actions poll-actions">
           <button id="poll-readings" class="button button-primary poll-button" type="button" disabled>Request readings</button>
           <button id="auto-poll-button" class="button button-secondary" type="button" disabled>Start auto update (0.5 s)</button>
         </div>
-        <p id="response-status" class="status" role="status" aria-live="polite">Connect to the FP-25, then request readings.</p>
-        <pre id="response-output" class="response-output">No data received yet.</pre>
+        <p id="response-status" class="status response-status" role="status" aria-live="polite">Connect to the FP-25, then request readings.</p>
+        <h3 class="readings-heading">Measurements</h3>
+        <div class="frame-table-scroll" role="region" aria-label="FP-25 measurements">
+          <table class="frame-table">
+            <thead>
+              <tr><th scope="col">Measurement</th><th scope="col">Value</th><th scope="col">Units</th></tr>
+            </thead>
+            <tbody id="frame-rows"></tbody>
+          </table>
+        </div>
         <details class="response-log">
           <summary>Recent raw BLE notifications</summary>
           <ol id="notification-log" class="notification-log"></ol>
-        </details>
-        <p id="measurement-source" class="field-help"></p>
-
-        <details class="frame-details">
-          <summary>Decoded data frame fields</summary>
-          <p class="field-help frame-help">
-            Field layout is based on FlowVision's <code>A??D*</code> response. Values appear when a valid
-            measurement frame arrives; a dash means the field was not present.
-          </p>
-          <div class="frame-table-scroll" role="region" aria-label="FP-25 data frame fields" tabindex="0">
-            <table class="frame-table">
-              <thead>
-                <tr><th scope="col">ID</th><th scope="col">Code</th><th scope="col">Name</th><th scope="col">Type</th><th scope="col">Value</th><th scope="col">Width</th><th scope="col">Notes</th></tr>
-              </thead>
-              <tbody id="frame-rows"></tbody>
-            </table>
-          </div>
         </details>
       </section>
 
