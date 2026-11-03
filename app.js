@@ -231,20 +231,26 @@ async function pollFp25() {
   }
 
   const initialFrameCount = measurementFrameCount;
+  const writeErrors = [];
   for (let index = 0; index < writeChannels.length; index += 1) {
     const channel = writeChannels[index];
     setStatus(`Trying the fixed A $$R16 read request on channel ${index + 1} of ${writeChannels.length}…`);
-    await writePollRequest(channel);
+    try {
+      await writePollRequest(channel);
+    } catch (error) {
+      writeErrors.push(`${channel.uuid}: ${error instanceof Error ? error.message : String(error)}`);
+      continue;
+    }
     await wait(600);
     if (measurementFrameCount > initialFrameCount) {
       return;
     }
   }
 
-  setStatus(
-    `No measurement frame received after polling ${writeChannels.length} writable channels. Notifications are active; no other commands were sent.`,
-    true,
-  );
+  const writeSummary = writeErrors.length === writeChannels.length
+    ? `All ${writeChannels.length} poll writes failed: ${writeErrors.join("; ")}`
+    : `No measurement frame received after trying ${writeChannels.length} writable channels${writeErrors.length ? `; ${writeErrors.length} writes failed (${writeErrors.join("; ")})` : ""}`;
+  setStatus(`${writeSummary}. Notifications are active; no other commands were sent.`, true);
 }
 
 function showValue(valueElement, dataView) {
