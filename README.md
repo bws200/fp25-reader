@@ -9,7 +9,7 @@ The app sends the FlowVision BLE terminal's observed live-read request `A` with 
 1. In the repository, open **Settings → Pages** and set **Build and deployment → Source** to **GitHub Actions**. GitHub requires this one-time setting; the workflow cannot enable Pages without repository-admin permissions.
 2. The included workflow deploys the site whenever `main` is updated. After its first successful run, use the Pages URL shown in the repository's **Settings → Pages**.
 3. Open the published HTTPS Pages URL in Chrome on Android.
-4. Choose the FP-25 and tap **Request readings** for one update, or **Start auto update (0.5 s)** to keep requesting readings. Auto update sends requests sequentially, waits 500 ms between writes, and stops if the device disconnects or a write fails. Tap **Stop auto update** to return to one-shot mode; **Request readings** is enabled again.
+4. Choose the FP-25 and tap **Request readings** for one update, or **Start auto update (0.5 s)** to keep requesting readings. Each request waits up to three seconds for a complete measurement frame; auto update retries if none arrives and waits 500 ms after each complete frame before requesting again. It stops if the device disconnects or a write fails. Tap **Stop auto update** to return to one-shot mode; **Request readings** is enabled again.
 5. Notifications are shown as text and hex, even if they are not complete measurement frames. The FP-25 may split one measurement line across several notification characteristics; the app joins incoming text chunks in arrival order, then decodes the completed frame in **Decoded data frame fields**. Open **Bluetooth services** only for channel-level details.
 
 Device selection and BLE data remain in the browser; this site has no backend.

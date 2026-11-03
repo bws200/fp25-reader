@@ -33,14 +33,6 @@ const FRAME_FIELDS = [
   ["D11", "005", "Std Flow", "s decimal", 10, "7/3 007 02", "SLPM"],
   ["D12", "025", "Rel Hum", "decimal", 11, "3/0 003 02", "%"],
   ["D13", "703", "Gas", "string", 12, "7/7", ""],
-  ["D14", "701", "*Error", "string", 13, "3", "ADC"],
-  ["D15", "702", "*Status", "string", 14, "3", "POV"],
-  ["D16", "702", "*Status", "string", 15, "3", "TOV"],
-  ["D17", "702", "*Status", "string", 16, "3", "VOV"],
-  ["D18", "702", "*Status", "string", 17, "3", "MOV"],
-  ["D19", "702", "*Status", "string", 18, "3", "TMF"],
-  ["D20", "702", "*Status", "string", 19, "3", "OVR"],
-  ["D21", "702", "*Status", "string", 20, "3", "LCK"],
 ];
 
 let connectedDevice = null;
@@ -55,6 +47,38 @@ let autoPollStarting = false;
 let autoPollTimer = null;
 let autoPollWritePending = false;
 let manualPollInProgress = false;
+let pendingFrameWaiter = null;
+let autoPollFrameWaiter = null;
+
+function waitForMeasurementFrame(timeoutMs = 3000) {
+  let timeoutId;
+  let resolvePromise;
+  let settled = false;
+  const waiter = {
+    finish(received) {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      if (pendingFrameWaiter === waiter) {
+        pendingFrameWaiter = null;
+      }
+      clearTimeout(timeoutId);
+      resolvePromise(received);
+    },
+  };
+  const promise = new Promise((resolve) => {
+    resolvePromise = resolve;
+  });
+
+  pendingFrameWaiter = waiter;
+  timeoutId = setTimeout(() => waiter.finish(false), timeoutMs);
+
+  return {
+    promise,
+    cancel: () => waiter.finish(false),
+  };
+}
 
 function canPollFp25() {
   const canWrite = fp25Characteristics.some(
@@ -197,8 +221,9 @@ function handleCharacteristicValue(characteristic, dataView) {
       measurementTime.textContent = `${frame.date} ${frame.time}`;
       setStatus(`Updated readings at ${frame.date} ${frame.time}.`);
       setResponseStatus(autoPolling
-        ? "Auto update running every 0.5 seconds."
+        ? "Auto update running; next request follows this frame."
         : "Measurement frame received and decoded.");
+      pendingFrameWaiter?.finish(true);
     }
   }
 
@@ -212,8 +237,9 @@ function handleCharacteristicValue(characteristic, dataView) {
     measurementTime.textContent = `${completeFrame.date} ${completeFrame.time}`;
     setStatus(`Updated readings at ${completeFrame.date} ${completeFrame.time}.`);
     setResponseStatus(autoPolling
-      ? "Auto update running every 0.5 seconds."
+      ? "Auto update running; next request follows this frame."
       : "Measurement frame received and decoded.");
+    pendingFrameWaiter?.finish(true);
   }
 }
 
@@ -255,10 +281,6 @@ async function writePollRequest(characteristic, request) {
   }
 }
 
-function wait(milliseconds) {
-  return new Promise((resolve) => setTimeout(resolve, milliseconds));
-}
-
 function getCommandChannel() {
   const commandChannel = fp25Characteristics.find(
     (characteristic) => characteristic.uuid.toLowerCase() === FP25_COMMAND_CHARACTERISTIC_UUID,
@@ -297,15 +319,16 @@ async function pollFp25(request) {
   notificationBuffer = "";
   const initialFrameCount = measurementFrameCount;
   const initialNotificationCount = notificationCount;
+  const frameWaiter = waitForMeasurementFrame();
   setResponseStatus(`Sending one read request on ${commandChannel.uuid}…`);
   try {
     await writePollRequest(commandChannel, request);
   } catch (error) {
+    frameWaiter.cancel();
     throw new Error(`Read request write failed on ${commandChannel.uuid}: ${error instanceof Error ? error.message : String(error)}`);
   }
 
-  await wait(1500);
-  if (measurementFrameCount > initialFrameCount) {
+  if (await frameWaiter.promise || measurementFrameCount > initialFrameCount) {
     setResponseStatus("Measurement frame received and decoded.");
     return;
   }
@@ -329,6 +352,8 @@ function stopAutoPolling(updateStatus = true) {
     clearTimeout(autoPollTimer);
     autoPollTimer = null;
   }
+  autoPollFrameWaiter?.cancel();
+  autoPollFrameWaiter = null;
   autoPollButton.textContent = "Start auto update (0.5 s)";
   updatePollButtons();
   const canPoll = canPollFp25();
@@ -343,15 +368,32 @@ async function sendAutoPollRequest() {
   }
 
   autoPollWritePending = true;
+  notificationBuffer = "";
+  const initialNotificationCount = notificationCount;
+  const frameWaiter = waitForMeasurementFrame();
+  autoPollFrameWaiter = frameWaiter;
   try {
     await writePollRequest(getCommandChannel(), `${FP25_POLL_REQUEST}\r`);
   } catch (error) {
+    frameWaiter.cancel();
+    autoPollFrameWaiter = null;
     stopAutoPolling(false);
     setResponseStatus(`Auto update stopped: ${error.message}`, true);
     return;
   } finally {
     autoPollWritePending = false;
     updatePollButtons();
+  }
+
+  const receivedFrame = await frameWaiter.promise;
+  if (autoPollFrameWaiter === frameWaiter) {
+    autoPollFrameWaiter = null;
+  }
+  if (autoPolling && !receivedFrame) {
+    const notificationsReceived = notificationCount - initialNotificationCount;
+    setResponseStatus(notificationsReceived > 0
+      ? "Partial response received; retrying the read request."
+      : "No response yet; retrying the read request.");
   }
 
   if (autoPolling) {
@@ -377,7 +419,7 @@ async function toggleAutoPolling() {
     autoPollButton.textContent = "Stop auto update";
     autoPollStarting = false;
     updatePollButtons();
-    setResponseStatus("Auto update running every 0.5 seconds.");
+    setResponseStatus("Auto update waits for each complete frame before requesting again.");
     await sendAutoPollRequest();
   } catch (error) {
     autoPolling = false;
