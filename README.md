@@ -9,7 +9,7 @@ The app sends the FlowVision BLE terminal's observed live-read request `A` with 
 1. In the repository, open **Settings → Pages** and set **Build and deployment → Source** to **GitHub Actions**. GitHub requires this one-time setting; the workflow cannot enable Pages without repository-admin permissions.
 2. The included workflow deploys the site whenever `main` is updated. After its first successful run, use the Pages URL shown in the repository's **Settings → Pages**.
 3. Open the published HTTPS Pages URL in Chrome on Android.
-4. Choose the FP-25 and tap **Request readings**. The app subscribes to notifications and sends one `A` request with a trailing carriage return on the first writable measurement channel, using BLE write-without-response when available.
+4. Choose the FP-25 and tap **Request readings**. The app subscribes to notifications and sends one `A` request with a trailing carriage return on the observed `...e200` command channel, using BLE write-without-response when available.
 5. Notifications are shown as text and hex, even if they are not complete measurement frames. When a measurement frame arrives, the app decodes the values in **Decoded data frame fields**. Open **Bluetooth services** only for channel-level details.
 
 Device selection and BLE data remain in the browser; this site has no backend.
@@ -20,7 +20,7 @@ The footer shows the Git commit hash and subject used for the deployed build. On
 
 - Web Bluetooth requires HTTPS and a supported browser. Android Chrome is a supported target; iOS browsers do not expose Web Bluetooth.
 - This project is not affiliated with Alicat and does not replace Alicat Connect.
-- BLE polling uses the `A` command shown in FlowVision's BLE Device terminal, which returned full live measurement frames. A carriage return terminates the request. Write-without-response is preferred because it is supported by the measurement characteristics. If your device firmware responds differently, stop polling and share the notification bytes before trying other commands.
+- BLE polling uses the `A` command shown in FlowVision's BLE Device terminal, which returned full live measurement frames. A carriage return terminates the request. The app writes to the observed `...e200` command channel and subscribes to notification characteristics; it does not guess the command channel from service enumeration order. Write-without-response is preferred because it is supported by the measurement characteristic. If your device firmware responds differently, stop polling and share the notification bytes before trying other commands.
 
 ## References
 

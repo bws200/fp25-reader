@@ -16,6 +16,7 @@ const measurementTime = document.querySelector("#measurement-time");
 const measurementSource = document.querySelector("#measurement-source");
 
 const FP25_SERVICE_UUID = "c5e69884-105c-41a2-ab07-ecd590e24814";
+const FP25_COMMAND_CHARACTERISTIC_UUID = "aeafdf8b-33bc-4920-a092-1a1e4840e200";
 const FP25_POLL_REQUEST = "A";
 const FRAME_FIELDS = [
   ["D01", "700", "Unit ID", "string", 0, "1", ""],
@@ -225,15 +226,18 @@ function wait(milliseconds) {
 }
 
 async function pollFp25(request) {
-  const writeChannels = fp25Characteristics.filter(
-    (characteristic) => characteristic.properties.write || characteristic.properties.writeWithoutResponse,
+  const commandChannel = fp25Characteristics.find(
+    (characteristic) => characteristic.uuid.toLowerCase() === FP25_COMMAND_CHARACTERISTIC_UUID,
   );
   const notifyChannels = fp25Characteristics.filter(
     (characteristic) => characteristic.properties.notify || characteristic.properties.indicate,
   );
 
-  if (writeChannels.length === 0 || notifyChannels.length === 0) {
-    throw new Error("The FP-25 measurement service has no writable poll or notification characteristics.");
+  if (!commandChannel || (!commandChannel.properties.write && !commandChannel.properties.writeWithoutResponse)) {
+    throw new Error(`The FP-25 command characteristic ${FP25_COMMAND_CHARACTERISTIC_UUID} is not available for writing.`);
+  }
+  if (notifyChannels.length === 0) {
+    throw new Error("The FP-25 measurement service has no notification characteristics.");
   }
 
   const subscriptionResults = await Promise.allSettled(notifyChannels.map(enableNotifications));
@@ -252,12 +256,11 @@ async function pollFp25(request) {
   notificationBuffers.clear();
   const initialFrameCount = measurementFrameCount;
   const initialNotificationCount = notificationCount;
-  const channel = writeChannels[0];
-  setResponseStatus(`Sending one read request on ${channel.uuid}…`);
+  setResponseStatus(`Sending one read request on ${commandChannel.uuid}…`);
   try {
-    await writePollRequest(channel, request);
+    await writePollRequest(commandChannel, request);
   } catch (error) {
-    throw new Error(`Read request write failed on ${channel.uuid}: ${error instanceof Error ? error.message : String(error)}`);
+    throw new Error(`Read request write failed on ${commandChannel.uuid}: ${error instanceof Error ? error.message : String(error)}`);
   }
 
   await wait(1500);
@@ -276,7 +279,7 @@ async function pollFp25(request) {
   }
 
   responseOutput.textContent = "No response notification received.";
-  setResponseStatus(`No notification response to the read request on ${channel.uuid}. No other channels were written.`, true);
+  setResponseStatus(`No notification response to the read request on ${commandChannel.uuid}. No other channels were written.`, true);
 }
 
 function showValue(valueElement, dataView) {
