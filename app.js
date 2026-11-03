@@ -9,8 +9,18 @@ const deviceName = document.querySelector("#device-name");
 const serviceList = document.querySelector("#service-list");
 const serviceCount = document.querySelector("#service-count");
 const connectionIndicator = document.querySelector("#connection-indicator");
+const measurementsElement = document.querySelector("#measurements");
+const measurementTime = document.querySelector("#measurement-time");
+const measurementSource = document.querySelector("#measurement-source");
+
+const FP25_SERVICE_UUID = "c5e69884-105c-41a2-ab07-ecd590e24814";
+const FP25_POLL_REQUEST = "A $$R16\r";
 
 let connectedDevice = null;
+let fp25Characteristics = [];
+const notificationReadings = new WeakMap();
+const notificationListeners = new WeakSet();
+const notificationBuffers = new WeakMap();
 
 function setStatus(message, isError = false) {
   statusMessage.textContent = message;
@@ -43,6 +53,138 @@ function formatValue(dataView) {
   };
 }
 
+function parseMeasurementFrame(frame) {
+  const fields = frame.trim().split(/\s+/);
+  if (
+    fields.length < 13 ||
+    !/^[A-Z]$/i.test(fields[0]) ||
+    !/^\d+$/.test(fields[1]) ||
+    !/^\d{4}-\d{2}-\d{2}$/.test(fields[2])
+  ) {
+    return null;
+  }
+
+  const numericFields = fields.slice(4, 8).concat(fields.slice(9, 12));
+  if (!numericFields.every((field) => /^[+-]?\d+(?:\.\d+)?$/.test(field))) {
+    return null;
+  }
+
+  return {
+    unitId: fields[0],
+    date: fields[2],
+    time: fields[3],
+    absolutePressure: fields[4],
+    gaugePressure: fields[5],
+    barometricPressure: fields[6],
+    temperature: fields[7],
+    temperatureSource: fields[8],
+    volumetricFlow: fields[9],
+    standardFlow: fields[10],
+    relativeHumidity: fields[11],
+    gas: fields[12],
+  };
+}
+
+function displayNumber(value) {
+  return Number(value).toFixed(value.includes(".") ? value.split(".")[1].length : 0);
+}
+
+function renderMeasurement(label, value, unit) {
+  const item = document.createElement("div");
+  item.className = "measurement";
+  const name = document.createElement("span");
+  name.className = "measurement-label";
+  name.textContent = label;
+  const reading = document.createElement("span");
+  reading.className = "measurement-value";
+  reading.textContent = displayNumber(value);
+  const units = document.createElement("span");
+  units.className = "measurement-unit";
+  units.textContent = unit;
+  reading.append(units);
+  item.append(name, reading);
+  return item;
+}
+
+function renderTextMeasurement(label, value) {
+  const item = document.createElement("div");
+  item.className = "measurement";
+  const name = document.createElement("span");
+  name.className = "measurement-label";
+  name.textContent = label;
+  const reading = document.createElement("span");
+  reading.className = "measurement-value";
+  reading.textContent = value;
+  item.append(name, reading);
+  return item;
+}
+
+function renderMeasurements(frame) {
+  measurementsElement.replaceChildren(
+    renderMeasurement("Volumetric flow", frame.volumetricFlow, "LPM"),
+    renderMeasurement("Standard flow", frame.standardFlow, "SLPM"),
+    renderMeasurement("Absolute pressure", frame.absolutePressure, "mmHgA"),
+    renderMeasurement("Gauge pressure", frame.gaugePressure, "mmHgG"),
+    renderMeasurement("Barometric pressure", frame.barometricPressure, "hPaA"),
+    renderMeasurement("Temperature", frame.temperature, "°C"),
+    renderMeasurement("Relative humidity", frame.relativeHumidity, "%"),
+    renderTextMeasurement("Gas", frame.gas),
+  );
+  measurementTime.textContent = `${frame.date} ${frame.time}`;
+  measurementSource.textContent = `Unit ${frame.unitId} · temperature source ${frame.temperatureSource} · pressure reference 0°C`;
+}
+
+function handleCharacteristicValue(characteristic, dataView) {
+  const reading = notificationReadings.get(characteristic);
+  if (reading) {
+    showValue(reading, dataView);
+  }
+
+  const bytes = new Uint8Array(dataView.buffer, dataView.byteOffset, dataView.byteLength);
+  const chunk = new TextDecoder().decode(bytes);
+  const combined = `${notificationBuffers.get(characteristic) || ""}${chunk}`;
+  const lines = combined.split(/[\r\n]+/);
+  const remainder = lines.pop() || "";
+  notificationBuffers.set(characteristic, remainder);
+
+  for (const line of lines) {
+    const frame = parseMeasurementFrame(line);
+    if (frame) {
+      renderMeasurements(frame);
+      setStatus(`Updated readings at ${frame.date} ${frame.time}.`);
+    }
+  }
+
+  const completeFrame = parseMeasurementFrame(remainder);
+  if (completeFrame) {
+    notificationBuffers.delete(characteristic);
+    renderMeasurements(completeFrame);
+    setStatus(`Updated readings at ${completeFrame.date} ${completeFrame.time}.`);
+  }
+}
+
+function attachNotificationListener(characteristic, reading) {
+  if (reading) {
+    notificationReadings.set(characteristic, reading);
+  }
+  if (notificationListeners.has(characteristic)) {
+    return;
+  }
+
+  characteristic.addEventListener("characteristicvaluechanged", (event) => {
+    handleCharacteristicValue(characteristic, event.target.value);
+  });
+  notificationListeners.add(characteristic);
+}
+
+async function enableNotifications(characteristic) {
+  if (!characteristic.properties.notify && !characteristic.properties.indicate) {
+    return;
+  }
+  await characteristic.startNotifications();
+  attachNotificationListener(characteristic);
+}
+
 function showValue(valueElement, dataView) {
   const formatted = formatValue(dataView);
   valueElement.replaceChildren();
@@ -64,11 +206,22 @@ function showValue(valueElement, dataView) {
 
 function clearServices(message) {
   serviceList.replaceChildren();
+  fp25Characteristics = [];
   const empty = document.createElement("p");
   empty.className = "empty-state";
   empty.textContent = message;
   serviceList.append(empty);
   serviceCount.textContent = "0 services";
+}
+
+function clearMeasurements(message) {
+  measurementsElement.replaceChildren();
+  const empty = document.createElement("p");
+  empty.className = "empty-state";
+  empty.textContent = message;
+  measurementsElement.append(empty);
+  measurementTime.textContent = "Waiting for poll";
+  measurementSource.textContent = "";
 }
 
 function handleDisconnected(device) {
@@ -82,6 +235,7 @@ function handleDisconnected(device) {
   connectionIndicator.classList.remove("connected");
   deviceName.hidden = true;
   clearServices("Disconnected. Connect again to inspect the device.");
+  clearMeasurements("Connect, then tap “Poll readings” on an FP-25 Bluetooth characteristic.");
   setStatus("Device disconnected.");
 }
 
@@ -118,6 +272,10 @@ async function renderServices(server) {
       continue;
     }
 
+    if (service.uuid.toLowerCase() === FP25_SERVICE_UUID) {
+      fp25Characteristics = characteristics;
+    }
+
     if (characteristics.length === 0) {
       const message = document.createElement("p");
       message.className = "empty-state";
@@ -127,14 +285,14 @@ async function renderServices(server) {
     }
 
     for (const characteristic of characteristics) {
-      renderCharacteristic(card, characteristic);
+      renderCharacteristic(card, characteristic, service);
     }
   }
 
-  setStatus("Connected. Read values or subscribe to notifications where supported.");
+  setStatus("Connected. Tap “Poll readings” on an FP-25 characteristic to request live measurements.");
 }
 
-function renderCharacteristic(serviceCard, characteristic) {
+function renderCharacteristic(serviceCard, characteristic, service) {
   const section = document.createElement("section");
   section.className = "characteristic";
 
@@ -189,10 +347,8 @@ function renderCharacteristic(serviceCard, characteristic) {
     notifyButton.addEventListener("click", async () => {
       notifyButton.disabled = true;
       try {
-        await characteristic.startNotifications();
-        characteristic.addEventListener("characteristicvaluechanged", (event) => {
-          showValue(reading, event.target.value);
-        });
+        await enableNotifications(characteristic);
+        attachNotificationListener(characteristic, reading);
         notifyButton.textContent = "Notifications on";
         setStatus(`Receiving notifications from ${characteristic.uuid}.`);
       } catch (error) {
@@ -201,6 +357,62 @@ function renderCharacteristic(serviceCard, characteristic) {
       }
     });
     actions.append(notifyButton);
+  }
+
+  if (
+    service.uuid.toLowerCase() === FP25_SERVICE_UUID &&
+    (characteristic.properties.write || characteristic.properties.writeWithoutResponse)
+  ) {
+    const pollButton = document.createElement("button");
+    pollButton.className = "small-button poll-button";
+    pollButton.type = "button";
+    pollButton.textContent = "Poll readings (A $$R16)";
+    pollButton.addEventListener("click", async () => {
+      pollButton.disabled = true;
+      try {
+        const listeners = fp25Characteristics.filter(
+          (item) => item.properties.notify || item.properties.indicate,
+        );
+        if (listeners.length === 0) {
+          throw new Error("No notification characteristics are available on the FP-25 service.");
+        }
+
+        const subscriptionResults = await Promise.allSettled(
+          listeners.map((item) => enableNotifications(item)),
+        );
+        const subscriptionErrors = subscriptionResults
+          .filter((result) => result.status === "rejected")
+          .map((result) => result.reason instanceof Error ? result.reason.message : String(result.reason));
+        if (subscriptionErrors.length === listeners.length) {
+          throw new Error(`Could not subscribe to FP-25 notifications: ${subscriptionErrors.join("; ")}`);
+        }
+
+        const payload = new TextEncoder().encode(FP25_POLL_REQUEST);
+        if (characteristic.properties.write && characteristic.writeValueWithResponse) {
+          await characteristic.writeValueWithResponse(payload);
+        } else if (
+          characteristic.properties.writeWithoutResponse &&
+          characteristic.writeValueWithoutResponse
+        ) {
+          await characteristic.writeValueWithoutResponse(payload);
+        } else if (characteristic.writeValue) {
+          await characteristic.writeValue(payload);
+        } else {
+          throw new Error("This characteristic does not support a Bluetooth write request.");
+        }
+
+        if (subscriptionErrors.length > 0) {
+          setStatus(`Sent A $$R16; some notifications could not start: ${subscriptionErrors.join("; ")}`, true);
+        } else {
+          setStatus(`Sent A $$R16 to ${characteristic.uuid}; waiting for the FP-25 data frame…`);
+        }
+      } catch (error) {
+        setStatus(`Could not poll readings: ${error.message}`, true);
+      } finally {
+        pollButton.disabled = false;
+      }
+    });
+    actions.append(pollButton);
   }
 
   section.append(heading, properties, reading, actions);
@@ -243,6 +455,7 @@ async function connect() {
     disconnectButton.disabled = false;
     deviceName.textContent = `Connected device: ${device.name || "Unnamed device"}`;
     deviceName.hidden = false;
+    clearMeasurements("Tap “Poll readings” on a characteristic in the FP-25 measurement service.");
     await renderServices(server);
   } catch (error) {
     if (error.name === "NotFoundError") {

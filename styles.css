@@ -273,6 +273,47 @@ button:focus-visible {
   gap: 12px;
 }
 
+.measurement-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.measurement {
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  background: #fbfdfb;
+}
+
+.measurement-label {
+  display: block;
+  margin-bottom: 5px;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.measurement-value {
+  display: block;
+  font-size: clamp(1rem, 4vw, 1.35rem);
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
+.measurement-unit {
+  margin-left: 4px;
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 500;
+}
+
+.measurement-source {
+  margin-top: 10px;
+}
+
 .empty-state {
   margin: 0;
   padding: 20px 12px;
@@ -371,6 +412,12 @@ button:focus-visible {
   opacity: 0.5;
 }
 
+.poll-button {
+  border-color: #b7d8c3;
+  background: var(--green-soft);
+  color: var(--green-dark);
+}
+
 footer {
   padding: 6px 4px 0;
   color: var(--muted);
@@ -402,5 +449,13 @@ footer p {
 
   .button {
     width: 100%;
+  }
+
+  .measurement-grid {
+    gap: 8px;
+  }
+
+  .measurement {
+    padding: 10px;
   }
 }

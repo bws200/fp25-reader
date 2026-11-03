@@ -4,27 +4,26 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#102420">
-    <meta name="description" content="A read-only Bluetooth Low Energy GATT inspector for Android Chrome.">
+    <meta name="description" content="Read live measurements from an Alicat FP-25 over Bluetooth LE on Android Chrome.">
     <meta name="build-version" content="__BUILD_VERSION__">
     <meta name="build-message" content="__BUILD_MESSAGE__">
-    <title>FP-25 Bluetooth Inspector</title>
+    <title>FP-25 Bluetooth Reader</title>
   </head>
   <body>
     <main class="shell">
       <header class="masthead">
         <p class="eyebrow">ALICAT FP-25 · BLUETOOTH LE</p>
-        <h1>Bluetooth inspector</h1>
-        <p class="lede">Connect to a nearby BLE device and inspect its readable characteristics.</p>
+        <h1>Live readings</h1>
+        <p class="lede">Connect to your FP-25 to view its measurements and units.</p>
       </header>
 
       <section class="notice" aria-labelledby="prototype-title">
         <span class="notice-icon" aria-hidden="true">i</span>
         <div>
-          <h2 id="prototype-title">Prototype — not an FP-25 reader yet</h2>
+          <h2 id="prototype-title">Read-only measurement polling</h2>
           <p>
-            Alicat's public documents don't specify the FP-25 Bluetooth services or data format.
-            This tool can inspect services you authorize, but it can't identify or decode FP-25
-            measurements and units until those details are known.
+            Poll sends the observed <code>A $$R16</code> read request and decodes the FP-25 data frame.
+            It does not send setpoints or change device settings.
           </p>
         </div>
       </section>
@@ -42,10 +41,9 @@
         <input id="name-filter" type="text" autocomplete="off" placeholder="Leave blank to choose any device">
 
         <label for="service-uuids">Services to authorize</label>
-        <textarea id="service-uuids" rows="2" spellcheck="false">generic_access, device_information</textarea>
+        <textarea id="service-uuids" rows="2" spellcheck="false">generic_access, device_information, c5e69884-105c-41a2-ab07-ecd590e24814</textarea>
         <p class="field-help">
-          Comma-separated service names or UUIDs. Add a device's custom service UUID here before
-          connecting to let Chrome access it.
+          The FP-25 measurement service is included. Chrome requires services to be authorized here.
         </p>
 
         <div class="actions">
@@ -57,11 +55,25 @@
         <p id="device-name" class="device-name" hidden></p>
       </section>
 
+      <section class="panel" aria-labelledby="measurements-title">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">02 / LIVE READINGS</p>
+            <h2 id="measurements-title">Measurements</h2>
+          </div>
+          <span id="measurement-time" class="count-badge">Waiting for poll</span>
+        </div>
+        <div id="measurements" class="measurement-grid">
+          <p class="empty-state">Connect, then tap “Poll readings” on an FP-25 Bluetooth characteristic.</p>
+        </div>
+        <p id="measurement-source" class="field-help"></p>
+      </section>
+
       <section class="panel" aria-labelledby="services-title">
         <div class="section-heading">
           <div>
-            <p class="eyebrow">02 / INSPECT</p>
-            <h2 id="services-title">Readable data</h2>
+            <p class="eyebrow">03 / DETAILS</p>
+            <h2 id="services-title">Bluetooth services</h2>
           </div>
           <span id="service-count" class="count-badge">0 services</span>
         </div>
@@ -71,7 +83,7 @@
       </section>
 
       <footer>
-        <p>Read-only: this page never writes to the device. Data stays in your browser.</p>
+        <p>Only the fixed read request is sent; the app never writes setpoints or settings. Data stays in your browser.</p>
         <p>Requires a secure HTTPS page and a browser with Web Bluetooth, such as Chrome on Android.</p>
         <p>Git <span id="build-version">checking…</span> — <span id="build-message"></span></p>
         <p id="update-status" role="status" aria-live="polite"></p>
