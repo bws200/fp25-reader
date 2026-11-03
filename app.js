@@ -3,6 +3,7 @@
 const connectButton = document.querySelector("#connect-button");
 const disconnectButton = document.querySelector("#disconnect-button");
 const pollReadingsButton = document.querySelector("#poll-readings");
+const autoPollButton = document.querySelector("#auto-poll-button");
 const statusMessage = document.querySelector("#status");
 const responseStatus = document.querySelector("#response-status");
 const responseOutput = document.querySelector("#response-output");
@@ -49,6 +50,9 @@ const notificationListeners = new WeakSet();
 let notificationBuffer = "";
 let measurementFrameCount = 0;
 let notificationCount = 0;
+let autoPolling = false;
+let autoPollTimer = null;
+let autoPollWritePending = false;
 
 function setStatus(message, isError = false) {
   statusMessage.textContent = message;
@@ -170,7 +174,9 @@ function handleCharacteristicValue(characteristic, dataView) {
       responseOutput.textContent = `Measurement frame:\n${line}`;
       measurementTime.textContent = `${frame.date} ${frame.time}`;
       setStatus(`Updated readings at ${frame.date} ${frame.time}.`);
-      setResponseStatus("Measurement frame received and decoded.");
+      setResponseStatus(autoPolling
+        ? "Auto update running every 0.5 seconds."
+        : "Measurement frame received and decoded.");
     }
   }
 
@@ -183,7 +189,9 @@ function handleCharacteristicValue(characteristic, dataView) {
     responseOutput.textContent = `Measurement frame:\n${line}`;
     measurementTime.textContent = `${completeFrame.date} ${completeFrame.time}`;
     setStatus(`Updated readings at ${completeFrame.date} ${completeFrame.time}.`);
-    setResponseStatus("Measurement frame received and decoded.");
+    setResponseStatus(autoPolling
+      ? "Auto update running every 0.5 seconds."
+      : "Measurement frame received and decoded.");
   }
 }
 
@@ -229,17 +237,20 @@ function wait(milliseconds) {
   return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
 
-async function pollFp25(request) {
+function getCommandChannel() {
   const commandChannel = fp25Characteristics.find(
     (characteristic) => characteristic.uuid.toLowerCase() === FP25_COMMAND_CHARACTERISTIC_UUID,
   );
-  const notifyChannels = fp25Characteristics.filter(
-    (characteristic) => characteristic.properties.notify || characteristic.properties.indicate,
-  );
-
   if (!commandChannel || (!commandChannel.properties.write && !commandChannel.properties.writeWithoutResponse)) {
     throw new Error(`The FP-25 command characteristic ${FP25_COMMAND_CHARACTERISTIC_UUID} is not available for writing.`);
   }
+  return commandChannel;
+}
+
+async function enableFp25Notifications() {
+  const notifyChannels = fp25Characteristics.filter(
+    (characteristic) => characteristic.properties.notify || characteristic.properties.indicate,
+  );
   if (notifyChannels.length === 0) {
     throw new Error("The FP-25 measurement service has no notification characteristics.");
   }
@@ -254,7 +265,11 @@ async function pollFp25(request) {
       .map((result) => result.reason instanceof Error ? result.reason.message : String(result.reason));
     throw new Error(`Could not subscribe to FP-25 notifications: ${errors.join("; ")}`);
   }
+}
 
+async function pollFp25(request) {
+  const commandChannel = getCommandChannel();
+  await enableFp25Notifications();
   responseOutput.textContent = "Waiting for a response…";
   notificationLog.replaceChildren();
   notificationBuffer = "";
@@ -286,6 +301,73 @@ async function pollFp25(request) {
   setResponseStatus(`No notification response to the read request on ${commandChannel.uuid}. No other channels were written.`, true);
 }
 
+function stopAutoPolling(updateStatus = true) {
+  autoPolling = false;
+  if (autoPollTimer !== null) {
+    clearTimeout(autoPollTimer);
+    autoPollTimer = null;
+  }
+  autoPollButton.textContent = "Start auto update (0.5 s)";
+  const canPoll = connectedDevice?.gatt?.connected && fp25Characteristics.some(
+    (characteristic) => characteristic.uuid.toLowerCase() === FP25_COMMAND_CHARACTERISTIC_UUID &&
+      (characteristic.properties.write || characteristic.properties.writeWithoutResponse),
+  );
+  autoPollButton.disabled = !canPoll;
+  if (updateStatus && canPoll) {
+    setResponseStatus("Auto update stopped.");
+  }
+}
+
+async function sendAutoPollRequest() {
+  if (!autoPolling || autoPollWritePending) {
+    return;
+  }
+
+  autoPollWritePending = true;
+  try {
+    await writePollRequest(getCommandChannel(), `${FP25_POLL_REQUEST}\r`);
+  } catch (error) {
+    stopAutoPolling(false);
+    setResponseStatus(`Auto update stopped: ${error.message}`, true);
+    return;
+  } finally {
+    autoPollWritePending = false;
+  }
+
+  if (autoPolling) {
+    autoPollTimer = setTimeout(sendAutoPollRequest, 500);
+  }
+}
+
+async function toggleAutoPolling() {
+  if (autoPolling) {
+    stopAutoPolling();
+    return;
+  }
+
+  autoPollButton.disabled = true;
+  pollReadingsButton.disabled = true;
+  try {
+    getCommandChannel();
+    await enableFp25Notifications();
+    notificationBuffer = "";
+    notificationLog.replaceChildren();
+    responseOutput.textContent = "Waiting for measurement frames…";
+    autoPolling = true;
+    autoPollButton.textContent = "Stop auto update";
+    autoPollButton.disabled = false;
+    setResponseStatus("Auto update running every 0.5 seconds.");
+    await sendAutoPollRequest();
+  } catch (error) {
+    autoPolling = false;
+    autoPollButton.textContent = "Start auto update (0.5 s)";
+    autoPollButton.disabled = false;
+    setResponseStatus(`Could not start auto update: ${error.message}`, true);
+  } finally {
+    pollReadingsButton.disabled = autoPolling || !connectedDevice?.gatt?.connected;
+  }
+}
+
 function showValue(valueElement, dataView) {
   const formatted = formatValue(dataView);
   valueElement.replaceChildren();
@@ -306,9 +388,11 @@ function showValue(valueElement, dataView) {
 }
 
 function clearServices(message) {
+  stopAutoPolling(false);
   serviceList.replaceChildren();
   fp25Characteristics = [];
   pollReadingsButton.disabled = true;
+  autoPollButton.disabled = true;
   const empty = document.createElement("p");
   empty.className = "empty-state";
   empty.textContent = message;
@@ -397,12 +481,14 @@ async function renderServices(server) {
   }
 
   const canWrite = fp25Characteristics.some(
-    (characteristic) => characteristic.properties.write || characteristic.properties.writeWithoutResponse,
+    (characteristic) => characteristic.uuid.toLowerCase() === FP25_COMMAND_CHARACTERISTIC_UUID &&
+      (characteristic.properties.write || characteristic.properties.writeWithoutResponse),
   );
   const canNotify = fp25Characteristics.some(
     (characteristic) => characteristic.properties.notify || characteristic.properties.indicate,
   );
   pollReadingsButton.disabled = !canWrite || !canNotify;
+  autoPollButton.disabled = !canWrite || !canNotify;
   setStatus("Connected.");
   setResponseStatus(canWrite && canNotify
     ? "Ready. Request readings to send the observed read-only command."
@@ -532,21 +618,28 @@ async function connect() {
 }
 
 async function poll(request) {
+  if (autoPolling || pollReadingsButton.disabled) {
+    return;
+  }
   pollReadingsButton.disabled = true;
+  autoPollButton.disabled = true;
   try {
     await pollFp25(request);
   } catch (error) {
     setResponseStatus(`Could not request readings: ${error.message}`, true);
   } finally {
     const canPoll = connectedDevice?.gatt?.connected &&
-      fp25Characteristics.some((characteristic) => characteristic.properties.write || characteristic.properties.writeWithoutResponse) &&
+      fp25Characteristics.some((characteristic) => characteristic.uuid.toLowerCase() === FP25_COMMAND_CHARACTERISTIC_UUID &&
+        (characteristic.properties.write || characteristic.properties.writeWithoutResponse)) &&
       fp25Characteristics.some((characteristic) => characteristic.properties.notify || characteristic.properties.indicate);
-    pollReadingsButton.disabled = !canPoll;
+    pollReadingsButton.disabled = !canPoll || autoPolling;
+    autoPollButton.disabled = !canPoll || autoPolling;
   }
 }
 
 connectButton.addEventListener("click", connect);
 pollReadingsButton.addEventListener("click", () => poll(`${FP25_POLL_REQUEST}\r`));
+autoPollButton.addEventListener("click", toggleAutoPolling);
 disconnectButton.addEventListener("click", () => {
   if (connectedDevice?.gatt?.connected) {
     connectedDevice.gatt.disconnect();
