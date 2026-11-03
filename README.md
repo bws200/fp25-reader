@@ -6,10 +6,11 @@ A small, read-only Web Bluetooth inspector intended to run as a static GitHub Pa
 
 ## Use on Android
 
-1. Publish this repository with GitHub Pages using **GitHub Actions** as the deployment source. The included workflow deploys the site whenever `main` is updated.
-2. Open the published HTTPS Pages URL in Chrome on Android.
-3. Enter any known service UUIDs before connecting. Chrome only permits access to the services listed in this field (along with services selected by its chooser).
-4. Choose the device, then use **Read** or **Start notifications** on characteristics that expose those capabilities.
+1. In the repository, open **Settings → Pages** and set **Build and deployment → Source** to **GitHub Actions**. GitHub requires this one-time setting; the workflow cannot enable Pages without repository-admin permissions.
+2. The included workflow deploys the site whenever `main` is updated. After its first successful run, use the Pages URL shown in the repository's **Settings → Pages**.
+3. Open the published HTTPS Pages URL in Chrome on Android.
+4. Enter any known service UUIDs before connecting. Chrome only permits access to the services listed in this field (along with services selected by its chooser).
+5. Choose the device, then use **Read** or **Start notifications** on characteristics that expose those capabilities.
 
 The inspector displays raw bytes as hexadecimal and best-effort UTF-8 text. It intentionally has no write operation. Device selection and BLE data remain in the browser; this site has no backend.
 
