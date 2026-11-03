@@ -10,7 +10,7 @@ The app sends the observed FlowVision read request `A $$R16` to FP-25 GATT chara
 2. The included workflow deploys the site whenever `main` is updated. After its first successful run, use the Pages URL shown in the repository's **Settings → Pages**.
 3. Open the published HTTPS Pages URL in Chrome on Android.
 4. Choose the FP-25 and try one of the two **Poll readings** options in its measurement service: with or without a trailing carriage return. Both options subscribe to notification characteristics and send only the observed `A $$R16` read request on writable channels, stopping when a valid measurement frame arrives.
-5. The latest frame is decoded into volumetric/standard flow, pressure, temperature, humidity, and gas. Raw bytes remain visible under each characteristic.
+5. The app shows the FlowVision `A??D*` field layout in a table. Values and units appear as soon as a valid measurement frame arrives; raw bytes remain visible under each characteristic.
 
 The app displays raw bytes as hexadecimal and best-effort UTF-8 text alongside decoded measurements. Device selection and BLE data remain in the browser; this site has no backend.
 

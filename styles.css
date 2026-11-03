@@ -273,45 +273,52 @@ button:focus-visible {
   gap: 12px;
 }
 
-.measurement-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
+.frame-help {
+  margin: -7px 0 12px;
 }
 
-.measurement {
-  min-width: 0;
-  padding: 12px;
+.frame-table-scroll {
+  max-width: 100%;
+  overflow-x: auto;
   border: 1px solid var(--line);
-  border-radius: 11px;
-  background: #fbfdfb;
+  border-radius: 10px;
+  background: #f8faf8;
 }
 
-.measurement-label {
-  display: block;
-  margin-bottom: 5px;
-  color: var(--muted);
-  font-size: 0.72rem;
-  font-weight: 700;
-}
-
-.measurement-value {
-  display: block;
-  font-size: clamp(1rem, 4vw, 1.35rem);
-  font-variant-numeric: tabular-nums;
-  font-weight: 800;
-  overflow-wrap: anywhere;
-}
-
-.measurement-unit {
-  margin-left: 4px;
-  color: var(--muted);
+.frame-table {
+  width: 100%;
+  min-width: 560px;
+  border-collapse: collapse;
+  color: #23332c;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
   font-size: 0.76rem;
-  font-weight: 500;
+  text-align: left;
 }
 
-.measurement-source {
-  margin-top: 10px;
+.frame-table th,
+.frame-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid #e3eae5;
+  white-space: nowrap;
+}
+
+.frame-table th {
+  position: sticky;
+  top: 0;
+  background: #eef3ef;
+  color: #52635a;
+  font-size: 0.68rem;
+}
+
+.frame-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.frame-value {
+  min-width: 82px;
+  color: var(--green-dark);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
 }
 
 .empty-state {
@@ -457,11 +464,4 @@ footer p {
     width: 100%;
   }
 
-  .measurement-grid {
-    gap: 8px;
-  }
-
-  .measurement {
-    padding: 10px;
-  }
 }

@@ -9,12 +9,35 @@ const deviceName = document.querySelector("#device-name");
 const serviceList = document.querySelector("#service-list");
 const serviceCount = document.querySelector("#service-count");
 const connectionIndicator = document.querySelector("#connection-indicator");
-const measurementsElement = document.querySelector("#measurements");
+const frameRows = document.querySelector("#frame-rows");
 const measurementTime = document.querySelector("#measurement-time");
 const measurementSource = document.querySelector("#measurement-source");
 
 const FP25_SERVICE_UUID = "c5e69884-105c-41a2-ab07-ecd590e24814";
 const FP25_POLL_REQUEST = "A $$R16";
+const FRAME_FIELDS = [
+  ["D01", "Unit ID", "string", 0, ""],
+  ["D02", "Measurement ID", "decimal", 1, ""],
+  ["D03", "User Date", "date", 2, "y-m-d"],
+  ["D04", "User Time", "time", 3, "h:m:s"],
+  ["D05", "Abs Press", "s decimal", 4, "mmHgA @ 0°C"],
+  ["D06", "Gage Press", "s decimal", 5, "mmHgG @ 0°C"],
+  ["D07", "Baro Press", "s decimal", 6, "hPaA"],
+  ["D08", "Temp", "s decimal", 7, "°C"],
+  ["D09", "Temp Source", "string", 8, ""],
+  ["D10", "Vol Flow", "s decimal", 9, "LPM"],
+  ["D11", "Std Flow", "s decimal", 10, "SLPM"],
+  ["D12", "Rel Hum", "decimal", 11, "%"],
+  ["D13", "Gas", "string", 12, ""],
+  ["D14", "*Error", "string", 13, "ADC"],
+  ["D15", "*Status", "string", 14, "POV"],
+  ["D16", "*Status", "string", 15, "TOV"],
+  ["D17", "*Status", "string", 16, "VOV"],
+  ["D18", "*Status", "string", 17, "MOV"],
+  ["D19", "*Status", "string", 18, "TMF"],
+  ["D20", "*Status", "string", 19, "OVR"],
+  ["D21", "*Status", "string", 20, "LCK"],
+];
 
 let connectedDevice = null;
 let fp25Characteristics = [];
@@ -72,6 +95,7 @@ function parseMeasurementFrame(frame) {
 
   return {
     unitId: fields[0],
+    measurementId: fields[1],
     date: fields[2],
     time: fields[3],
     absolutePressure: fields[4],
@@ -83,56 +107,38 @@ function parseMeasurementFrame(frame) {
     standardFlow: fields[10],
     relativeHumidity: fields[11],
     gas: fields[12],
+    fields,
   };
 }
 
-function displayNumber(value) {
-  return Number(value).toFixed(value.includes(".") ? value.split(".")[1].length : 0);
+function renderFrameField(field) {
+  const [id, name, type, valueIndex, notes] = field;
+  const row = document.createElement("tr");
+  for (const value of [id, name, type]) {
+    const cell = document.createElement("td");
+    cell.textContent = value;
+    row.append(cell);
+  }
+  const valueCell = document.createElement("td");
+  valueCell.className = "frame-value";
+  valueCell.dataset.fieldIndex = String(valueIndex);
+  valueCell.textContent = "—";
+  row.append(valueCell);
+  const notesCell = document.createElement("td");
+  notesCell.textContent = notes;
+  row.append(notesCell);
+  frameRows.append(row);
+  return valueCell;
 }
 
-function renderMeasurement(label, value, unit) {
-  const item = document.createElement("div");
-  item.className = "measurement";
-  const name = document.createElement("span");
-  name.className = "measurement-label";
-  name.textContent = label;
-  const reading = document.createElement("span");
-  reading.className = "measurement-value";
-  reading.textContent = displayNumber(value);
-  const units = document.createElement("span");
-  units.className = "measurement-unit";
-  units.textContent = unit;
-  reading.append(units);
-  item.append(name, reading);
-  return item;
-}
-
-function renderTextMeasurement(label, value) {
-  const item = document.createElement("div");
-  item.className = "measurement";
-  const name = document.createElement("span");
-  name.className = "measurement-label";
-  name.textContent = label;
-  const reading = document.createElement("span");
-  reading.className = "measurement-value";
-  reading.textContent = value;
-  item.append(name, reading);
-  return item;
-}
+const frameValueCells = FRAME_FIELDS.map(renderFrameField);
 
 function renderMeasurements(frame) {
-  measurementsElement.replaceChildren(
-    renderMeasurement("Volumetric flow", frame.volumetricFlow, "LPM"),
-    renderMeasurement("Standard flow", frame.standardFlow, "SLPM"),
-    renderMeasurement("Absolute pressure", frame.absolutePressure, "mmHgA"),
-    renderMeasurement("Gauge pressure", frame.gaugePressure, "mmHgG"),
-    renderMeasurement("Barometric pressure", frame.barometricPressure, "hPaA"),
-    renderMeasurement("Temperature", frame.temperature, "°C"),
-    renderMeasurement("Relative humidity", frame.relativeHumidity, "%"),
-    renderTextMeasurement("Gas", frame.gas),
-  );
+  frameValueCells.forEach((cell, index) => {
+    cell.textContent = frame.fields[index] || "—";
+  });
   measurementTime.textContent = `${frame.date} ${frame.time}`;
-  measurementSource.textContent = `Unit ${frame.unitId} · temperature source ${frame.temperatureSource} · pressure reference 0°C`;
+  measurementSource.textContent = `Unit ${frame.unitId} · measurement ${frame.measurementId}`;
 }
 
 function handleCharacteristicValue(characteristic, dataView) {
@@ -283,15 +289,13 @@ function clearServices(message) {
 }
 
 function clearMeasurements(message) {
-  measurementsElement.replaceChildren();
+  frameValueCells.forEach((cell) => {
+    cell.textContent = "—";
+  });
   notificationBuffer = "";
   measurementFrameCount = 0;
-  const empty = document.createElement("p");
-  empty.className = "empty-state";
-  empty.textContent = message;
-  measurementsElement.append(empty);
-  measurementTime.textContent = "Waiting for poll";
-  measurementSource.textContent = "";
+  measurementTime.textContent = "Waiting for frame";
+  measurementSource.textContent = message;
 }
 
 function handleDisconnected(device) {

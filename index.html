@@ -61,12 +61,21 @@
         <div class="section-heading">
           <div>
             <p class="eyebrow">02 / LIVE READINGS</p>
-            <h2 id="measurements-title">Measurements</h2>
+            <h2 id="measurements-title">FP-25 data frame</h2>
           </div>
-          <span id="measurement-time" class="count-badge">Waiting for poll</span>
+          <span id="measurement-time" class="count-badge">Waiting for frame</span>
         </div>
-        <div id="measurements" class="measurement-grid">
-          <p class="empty-state">Connect, then try a poll option in the FP-25 service section.</p>
+        <p class="field-help frame-help">
+          Field layout is based on FlowVision's <code>A??D*</code> response. Values appear when a valid
+          measurement frame arrives from the meter.
+        </p>
+        <div class="frame-table-scroll" role="region" aria-label="FP-25 data frame fields" tabindex="0">
+          <table class="frame-table">
+            <thead>
+              <tr><th scope="col">ID</th><th scope="col">Name</th><th scope="col">Type</th><th scope="col">Value</th><th scope="col">Notes / units</th></tr>
+            </thead>
+            <tbody id="frame-rows"></tbody>
+          </table>
         </div>
         <p id="measurement-source" class="field-help"></p>
       </section>
