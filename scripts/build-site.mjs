@@ -46,7 +46,7 @@ await mkdir(outputDirectory, { recursive: true });
 await Promise.all([
   writeFile(join(outputDirectory, "index.html"), html),
   writeFile(join(outputDirectory, "version.json"), `${JSON.stringify({ version, message })}\n`),
-  ...["app.js", "styles.css"].map(async (file) => {
+  ...["app.js", "styles.css", "manifest.webmanifest", "icon-192.png", "icon-512.png"].map(async (file) => {
     const contents = await readFile(join(root, file));
     await writeFile(join(outputDirectory, file), contents);
   }),
