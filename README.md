@@ -9,8 +9,8 @@ The app sends the observed FlowVision read request `A $$R16` with a carriage-ret
 1. In the repository, open **Settings → Pages** and set **Build and deployment → Source** to **GitHub Actions**. GitHub requires this one-time setting; the workflow cannot enable Pages without repository-admin permissions.
 2. The included workflow deploys the site whenever `main` is updated. After its first successful run, use the Pages URL shown in the repository's **Settings → Pages**.
 3. Open the published HTTPS Pages URL in Chrome on Android.
-4. Choose the FP-25 and tap **Request readings**. The app subscribes to notifications and sends the observed `A $$R16` request with a trailing carriage return, using BLE write-without-response when available. It tries writable channels until one responds. The no-carriage-return variant is under **Alternative request format**.
-5. The latest notification is shown as text and hex, whether or not it forms a complete measurement frame. Open **Decoded data frame fields** to inspect parsed values; open **Bluetooth services** only for channel-level details.
+4. Choose the FP-25 and tap **Request readings**. The app subscribes to notifications and sends the observed `A $$R16` request with a trailing carriage return, using BLE write-without-response when available. It checks writable channels until a complete measurement frame arrives or all channels are tried. The no-carriage-return variant is under **Alternative request format**.
+5. Notifications are shown as text and hex, even if they are not complete measurement frames. The app keeps checking other writable channels after a non-frame notification such as `A 016 = 199`; when a measurement frame arrives, it decodes the values in **Decoded data frame fields**. Open **Bluetooth services** only for channel-level details.
 
 Device selection and BLE data remain in the browser; this site has no backend.
 

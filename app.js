@@ -264,14 +264,20 @@ async function pollFp25(request) {
       continue;
     }
     await wait(600);
-    if (notificationCount > initialNotificationCount) {
-      await wait(500);
-      const receivedFrames = measurementFrameCount > initialFrameCount;
-      setResponseStatus(receivedFrames
-        ? "Measurement frame received and decoded."
-        : "Notification received. The raw response is shown above; no complete measurement frame was decoded.");
+    if (measurementFrameCount > initialFrameCount) {
+      setResponseStatus("Measurement frame received and decoded.");
       return;
     }
+  }
+
+  await wait(500);
+  const notificationsReceived = notificationCount - initialNotificationCount;
+  if (notificationsReceived > 0) {
+    setResponseStatus(
+      `${notificationsReceived} notification${notificationsReceived === 1 ? "" : "s"} received, but none contained a complete measurement frame. Raw data is shown above and in the notification log.`,
+      true,
+    );
+    return;
   }
 
   const writeSummary = writeErrors.length === writeChannels.length
