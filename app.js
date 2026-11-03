@@ -51,8 +51,30 @@ let notificationBuffer = "";
 let measurementFrameCount = 0;
 let notificationCount = 0;
 let autoPolling = false;
+let autoPollStarting = false;
 let autoPollTimer = null;
 let autoPollWritePending = false;
+let manualPollInProgress = false;
+
+function canPollFp25() {
+  const canWrite = fp25Characteristics.some(
+    (characteristic) => characteristic.uuid.toLowerCase() === FP25_COMMAND_CHARACTERISTIC_UUID &&
+      (characteristic.properties.write || characteristic.properties.writeWithoutResponse),
+  );
+  const canNotify = fp25Characteristics.some(
+    (characteristic) => characteristic.properties.notify || characteristic.properties.indicate,
+  );
+
+  return Boolean(connectedDevice?.gatt?.connected && canWrite && canNotify);
+}
+
+function updatePollButtons() {
+  const canPoll = canPollFp25();
+
+  pollReadingsButton.disabled = !canPoll ||
+    autoPolling || autoPollStarting || autoPollWritePending || manualPollInProgress;
+  autoPollButton.disabled = !canPoll || autoPollStarting || manualPollInProgress;
+}
 
 function setStatus(message, isError = false) {
   statusMessage.textContent = message;
@@ -308,11 +330,8 @@ function stopAutoPolling(updateStatus = true) {
     autoPollTimer = null;
   }
   autoPollButton.textContent = "Start auto update (0.5 s)";
-  const canPoll = connectedDevice?.gatt?.connected && fp25Characteristics.some(
-    (characteristic) => characteristic.uuid.toLowerCase() === FP25_COMMAND_CHARACTERISTIC_UUID &&
-      (characteristic.properties.write || characteristic.properties.writeWithoutResponse),
-  );
-  autoPollButton.disabled = !canPoll;
+  updatePollButtons();
+  const canPoll = canPollFp25();
   if (updateStatus && canPoll) {
     setResponseStatus("Auto update stopped.");
   }
@@ -332,6 +351,7 @@ async function sendAutoPollRequest() {
     return;
   } finally {
     autoPollWritePending = false;
+    updatePollButtons();
   }
 
   if (autoPolling) {
@@ -345,8 +365,8 @@ async function toggleAutoPolling() {
     return;
   }
 
-  autoPollButton.disabled = true;
-  pollReadingsButton.disabled = true;
+  autoPollStarting = true;
+  updatePollButtons();
   try {
     getCommandChannel();
     await enableFp25Notifications();
@@ -355,16 +375,17 @@ async function toggleAutoPolling() {
     responseOutput.textContent = "Waiting for measurement frames…";
     autoPolling = true;
     autoPollButton.textContent = "Stop auto update";
-    autoPollButton.disabled = false;
+    autoPollStarting = false;
+    updatePollButtons();
     setResponseStatus("Auto update running every 0.5 seconds.");
     await sendAutoPollRequest();
   } catch (error) {
     autoPolling = false;
     autoPollButton.textContent = "Start auto update (0.5 s)";
-    autoPollButton.disabled = false;
     setResponseStatus(`Could not start auto update: ${error.message}`, true);
   } finally {
-    pollReadingsButton.disabled = autoPolling || !connectedDevice?.gatt?.connected;
+    autoPollStarting = false;
+    updatePollButtons();
   }
 }
 
@@ -487,8 +508,7 @@ async function renderServices(server) {
   const canNotify = fp25Characteristics.some(
     (characteristic) => characteristic.properties.notify || characteristic.properties.indicate,
   );
-  pollReadingsButton.disabled = !canWrite || !canNotify;
-  autoPollButton.disabled = !canWrite || !canNotify;
+  updatePollButtons();
   setStatus("Connected.");
   setResponseStatus(canWrite && canNotify
     ? "Ready. Request readings to send the observed read-only command."
@@ -618,22 +638,18 @@ async function connect() {
 }
 
 async function poll(request) {
-  if (autoPolling || pollReadingsButton.disabled) {
+  if (!canPollFp25() || autoPolling || autoPollStarting || manualPollInProgress) {
     return;
   }
-  pollReadingsButton.disabled = true;
-  autoPollButton.disabled = true;
+  manualPollInProgress = true;
+  updatePollButtons();
   try {
     await pollFp25(request);
   } catch (error) {
     setResponseStatus(`Could not request readings: ${error.message}`, true);
   } finally {
-    const canPoll = connectedDevice?.gatt?.connected &&
-      fp25Characteristics.some((characteristic) => characteristic.uuid.toLowerCase() === FP25_COMMAND_CHARACTERISTIC_UUID &&
-        (characteristic.properties.write || characteristic.properties.writeWithoutResponse)) &&
-      fp25Characteristics.some((characteristic) => characteristic.properties.notify || characteristic.properties.indicate);
-    pollReadingsButton.disabled = !canPoll || autoPolling;
-    autoPollButton.disabled = !canPoll || autoPolling;
+    manualPollInProgress = false;
+    updatePollButtons();
   }
 }
 

@@ -468,16 +468,28 @@ footer p {
     padding-top: max(24px, env(safe-area-inset-top));
   }
 
+  .masthead {
+    padding: 4px 2px 16px;
+  }
+
   .panel {
     padding: 17px;
   }
 
-    .actions {
+  .actions:not(.poll-actions) {
+    flex-direction: row;
+  }
+
+  .actions:not(.poll-actions) .button {
+    width: auto;
+    flex: 1;
+  }
+
+  .poll-actions {
     flex-direction: column;
   }
 
-  .button {
+  .poll-actions .button {
     width: 100%;
   }
-
 }
