@@ -3,7 +3,6 @@
 const connectButton = document.querySelector("#connect-button");
 const disconnectButton = document.querySelector("#disconnect-button");
 const pollReadingsButton = document.querySelector("#poll-readings");
-const pollNoCrButton = document.querySelector("#poll-no-cr");
 const statusMessage = document.querySelector("#status");
 const responseStatus = document.querySelector("#response-status");
 const responseOutput = document.querySelector("#response-output");
@@ -17,7 +16,7 @@ const measurementTime = document.querySelector("#measurement-time");
 const measurementSource = document.querySelector("#measurement-source");
 
 const FP25_SERVICE_UUID = "c5e69884-105c-41a2-ab07-ecd590e24814";
-const FP25_POLL_REQUEST = "A $$R16";
+const FP25_POLL_REQUEST = "A";
 const FRAME_FIELDS = [
   ["D01", "700", "Unit ID", "string", 0, "1", ""],
   ["D02", "801", "Measurement ID", "decimal", 1, "6/0", ""],
@@ -303,7 +302,6 @@ function clearServices(message) {
   serviceList.replaceChildren();
   fp25Characteristics = [];
   pollReadingsButton.disabled = true;
-  pollNoCrButton.disabled = true;
   const empty = document.createElement("p");
   empty.className = "empty-state";
   empty.textContent = message;
@@ -398,7 +396,6 @@ async function renderServices(server) {
     (characteristic) => characteristic.properties.notify || characteristic.properties.indicate,
   );
   pollReadingsButton.disabled = !canWrite || !canNotify;
-  pollNoCrButton.disabled = !canWrite || !canNotify;
   setStatus("Connected.");
   setResponseStatus(canWrite && canNotify
     ? "Ready. Request readings to send the observed read-only command."
@@ -529,7 +526,6 @@ async function connect() {
 
 async function poll(request) {
   pollReadingsButton.disabled = true;
-  pollNoCrButton.disabled = true;
   try {
     await pollFp25(request);
   } catch (error) {
@@ -539,13 +535,11 @@ async function poll(request) {
       fp25Characteristics.some((characteristic) => characteristic.properties.write || characteristic.properties.writeWithoutResponse) &&
       fp25Characteristics.some((characteristic) => characteristic.properties.notify || characteristic.properties.indicate);
     pollReadingsButton.disabled = !canPoll;
-    pollNoCrButton.disabled = !canPoll;
   }
 }
 
 connectButton.addEventListener("click", connect);
 pollReadingsButton.addEventListener("click", () => poll(`${FP25_POLL_REQUEST}\r`));
-pollNoCrButton.addEventListener("click", () => poll(FP25_POLL_REQUEST));
 disconnectButton.addEventListener("click", () => {
   if (connectedDevice?.gatt?.connected) {
     connectedDevice.gatt.disconnect();
