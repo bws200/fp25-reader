@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#102420">
+    <meta name="description" content="A read-only Bluetooth Low Energy GATT inspector for Android Chrome.">
+    <title>FP-25 Bluetooth Inspector</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="app.js" defer></script>
+  </head>
+  <body>
+    <main class="shell">
+      <header class="masthead">
+        <p class="eyebrow">ALICAT FP-25 · BLUETOOTH LE</p>
+        <h1>Bluetooth inspector</h1>
+        <p class="lede">Connect to a nearby BLE device and inspect its readable characteristics.</p>
+      </header>
+
+      <section class="notice" aria-labelledby="prototype-title">
+        <span class="notice-icon" aria-hidden="true">i</span>
+        <div>
+          <h2 id="prototype-title">Prototype — not an FP-25 reader yet</h2>
+          <p>
+            Alicat's public documents don't specify the FP-25 Bluetooth services or data format.
+            This tool can inspect services you authorize, but it can't identify or decode FP-25
+            measurements and units until those details are known.
+          </p>
+        </div>
+      </section>
+
+      <section class="panel" aria-labelledby="connection-title">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">01 / CONNECT</p>
+            <h2 id="connection-title">Device connection</h2>
+          </div>
+          <span id="connection-indicator" class="connection-indicator" aria-hidden="true"></span>
+        </div>
+
+        <label for="name-filter">Device name starts with <span class="optional">(optional)</span></label>
+        <input id="name-filter" type="text" autocomplete="off" placeholder="Leave blank to choose any device">
+
+        <label for="service-uuids">Services to authorize</label>
+        <textarea id="service-uuids" rows="2" spellcheck="false">generic_access, device_information</textarea>
+        <p class="field-help">
+          Comma-separated service names or UUIDs. Add a device's custom service UUID here before
+          connecting to let Chrome access it.
+        </p>
+
+        <div class="actions">
+          <button id="connect-button" class="button button-primary" type="button">Choose device</button>
+          <button id="disconnect-button" class="button button-secondary" type="button" disabled>Disconnect</button>
+        </div>
+
+        <p id="status" class="status" role="status" aria-live="polite">Ready to connect.</p>
+        <p id="device-name" class="device-name" hidden></p>
+      </section>
+
+      <section class="panel" aria-labelledby="services-title">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">02 / INSPECT</p>
+            <h2 id="services-title">Readable data</h2>
+          </div>
+          <span id="service-count" class="count-badge">0 services</span>
+        </div>
+        <div id="service-list" class="service-list">
+          <p class="empty-state">Connect to a device to discover its authorized services.</p>
+        </div>
+      </section>
+
+      <footer>
+        <p>Read-only: this page never writes to the device. Data stays in your browser.</p>
+        <p>Requires a secure HTTPS page and a browser with Web Bluetooth, such as Chrome on Android.</p>
+      </footer>
+    </main>
+  </body>
+</html>
