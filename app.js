@@ -207,13 +207,13 @@ async function enableNotifications(characteristic) {
 
 async function writePollRequest(characteristic, request) {
   const payload = new TextEncoder().encode(request);
-  if (characteristic.properties.write && characteristic.writeValueWithResponse) {
-    await characteristic.writeValueWithResponse(payload);
-  } else if (
+  if (
     characteristic.properties.writeWithoutResponse &&
     characteristic.writeValueWithoutResponse
   ) {
     await characteristic.writeValueWithoutResponse(payload);
+  } else if (characteristic.properties.write && characteristic.writeValueWithResponse) {
+    await characteristic.writeValueWithResponse(payload);
   } else if (characteristic.writeValue) {
     await characteristic.writeValue(payload);
   } else {
