@@ -6,6 +6,7 @@ const APP_FILES = [
   "./app.js",
   "./styles.css",
   "./manifest.webmanifest",
+  "./icon.svg",
   "./icon-192.png",
   "./icon-512.png",
 ];
