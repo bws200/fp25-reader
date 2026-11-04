@@ -707,3 +707,18 @@ disconnectButton.addEventListener("click", () => {
 if (!("bluetooth" in navigator) || !navigator.bluetooth) {
   setStatus("Web Bluetooth is unavailable in this browser. Use Chrome on Android over HTTPS.", true);
 }
+
+if ("serviceWorker" in navigator && window.isSecureContext) {
+  let refreshing = false;
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if (refreshing) {
+      return;
+    }
+    refreshing = true;
+    window.location.reload();
+  });
+
+  navigator.serviceWorker.register("./service-worker.js", { updateViaCache: "none" })
+    .then((registration) => registration.update())
+    .catch((error) => console.error("Could not register the FP-25 app service worker.", error));
+}

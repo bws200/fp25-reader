@@ -37,14 +37,21 @@ const escapeHtmlAttribute = (value) => value
 const html = (await readFile(join(root, "index.html"), "utf8"))
   .replaceAll("__BUILD_VERSION__", version)
   .replaceAll("__BUILD_MESSAGE__", escapeHtmlAttribute(message));
+const serviceWorker = (await readFile(join(root, "service-worker.js"), "utf8"))
+  .replaceAll("__BUILD_VERSION__", version);
 
-if (html.includes("__BUILD_VERSION__") || html.includes("__BUILD_MESSAGE__")) {
+if (
+  html.includes("__BUILD_VERSION__") ||
+  html.includes("__BUILD_MESSAGE__") ||
+  serviceWorker.includes("__BUILD_VERSION__")
+) {
   throw new Error("Build metadata placeholders were not fully replaced.");
 }
 
 await mkdir(outputDirectory, { recursive: true });
 await Promise.all([
   writeFile(join(outputDirectory, "index.html"), html),
+  writeFile(join(outputDirectory, "service-worker.js"), serviceWorker),
   writeFile(join(outputDirectory, "version.json"), `${JSON.stringify({ version, message })}\n`),
   ...["app.js", "styles.css", "manifest.webmanifest", "icon-192.png", "icon-512.png"].map(async (file) => {
     const contents = await readFile(join(root, file));
