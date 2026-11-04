@@ -1,6 +1,6 @@
 {
-  "name": "Alicat FP-25 Bluetooth Reader",
-  "short_name": "FP-25 Reader",
+  "name": "Alicat FP-25 Reader",
+  "short_name": "Alicat Reader",
   "description": "Read live measurements from an Alicat FP-25 over Bluetooth LE.",
   "start_url": "./",
   "scope": "./",
