@@ -17,7 +17,7 @@ After connecting, the connection and reading controls collapse to compact summar
 
 Device selection and BLE data remain in the browser; this site has no backend.
 
-The footer shows the Git commit hash and subject used for the deployed build. On each visit, the page checks a cache-busted build manifest and automatically reloads if Pages is serving an older version. A versioned service worker caches the app shell for installation/offline startup, bypasses the version check, and removes previous app-shell caches when updated. The deployment publishes the current `main` build at one Pages URL; it does not create separate public URLs for older builds.
+The footer shows the Git commit hash and subject used for the deployed build. On each visit, the page checks a cache-busted build manifest and automatically reloads if Pages is serving an older version. A versioned service worker caches the app shell for installation/offline startup, bypasses the version check, and removes previous app-shell caches when updated. The deployment publishes the current `main` build at one Pages URL; after each successful deployment, the workflow deletes older GitHub Pages deployment records so only the latest remains.
 
 ## Requirements and limitations
 
