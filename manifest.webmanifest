@@ -2,6 +2,7 @@
   "name": "Alicat FP-25 Reader",
   "short_name": "Alicat Reader",
   "description": "Read live measurements from an Alicat FP-25 over Bluetooth LE.",
+  "id": "./?app=alicat-reader-v2",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
