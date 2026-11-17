@@ -6,6 +6,7 @@ const connectionPanel = document.querySelector("#connection-panel");
 const connectionSummary = document.querySelector("#connection-summary");
 const pollReadingsButton = document.querySelector("#poll-readings");
 const autoPollButton = document.querySelector("#auto-poll-button");
+const pollIntervalSelect = document.querySelector("#poll-interval");
 const readControls = document.querySelector("#read-controls");
 const readingControlSummary = document.querySelector("#reading-control-summary");
 const statusMessage = document.querySelector("#status");
@@ -101,7 +102,7 @@ function updatePollButtons() {
     autoPolling || autoPollStarting || autoPollWritePending || manualPollInProgress;
   autoPollButton.disabled = !canPoll || autoPollStarting || manualPollInProgress;
   readingControlSummary.textContent = autoPolling
-    ? "Auto update is on"
+    ? `Auto update · ${pollIntervalSelect.value} s`
     : manualPollInProgress
       ? "Request in progress"
       : canPoll
@@ -352,7 +353,7 @@ function stopAutoPolling(updateStatus = true) {
   }
   autoPollFrameWaiter?.cancel();
   autoPollFrameWaiter = null;
-  autoPollButton.textContent = "Start auto update (0.5 s)";
+  autoPollButton.textContent = "Start auto update";
   updatePollButtons();
   const canPoll = canPollFp25();
   if (updateStatus && canPoll) {
@@ -395,8 +396,19 @@ async function sendAutoPollRequest() {
   }
 
   if (autoPolling) {
-    autoPollTimer = setTimeout(sendAutoPollRequest, 500);
+    scheduleAutoPoll();
   }
+}
+
+function scheduleAutoPoll() {
+  if (!autoPolling) {
+    return;
+  }
+
+  autoPollTimer = setTimeout(() => {
+    autoPollTimer = null;
+    void sendAutoPollRequest();
+  }, Number(pollIntervalSelect.value) * 1000);
 }
 
 async function toggleAutoPolling() {
@@ -417,11 +429,11 @@ async function toggleAutoPolling() {
     autoPollStarting = false;
     updatePollButtons();
     readControls.open = false;
-    setResponseStatus("Auto update waits for each complete frame before requesting again.");
+    setResponseStatus("Auto update waits for each complete frame, then uses the selected refresh interval.");
     await sendAutoPollRequest();
   } catch (error) {
     autoPolling = false;
-    autoPollButton.textContent = "Start auto update (0.5 s)";
+    autoPollButton.textContent = "Start auto update";
     setResponseStatus(`Could not start auto update: ${error.message}`, true);
   } finally {
     autoPollStarting = false;
@@ -698,6 +710,13 @@ async function poll(request) {
 connectButton.addEventListener("click", connect);
 pollReadingsButton.addEventListener("click", () => poll(`${FP25_POLL_REQUEST}\r`));
 autoPollButton.addEventListener("click", toggleAutoPolling);
+pollIntervalSelect.addEventListener("change", () => {
+  updatePollButtons();
+  if (autoPolling && autoPollTimer !== null) {
+    clearTimeout(autoPollTimer);
+    scheduleAutoPoll();
+  }
+});
 disconnectButton.addEventListener("click", () => {
   if (connectedDevice?.gatt?.connected) {
     connectedDevice.gatt.disconnect();

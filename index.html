@@ -47,9 +47,18 @@
             </span>
           </summary>
           <div class="read-control-content">
+            <div class="poll-interval-control">
+              <label for="poll-interval">Refresh interval</label>
+              <select id="poll-interval" aria-label="Automatic refresh interval">
+                <option value="0.1">0.1 s</option>
+                <option value="0.2">0.2 s</option>
+                <option value="0.5" selected>0.5 s</option>
+                <option value="1">1 s</option>
+              </select>
+            </div>
             <div class="actions poll-actions">
               <button id="poll-readings" class="button button-primary poll-button" type="button" disabled>Request readings</button>
-              <button id="auto-poll-button" class="button button-secondary" type="button" disabled>Start auto update (0.5 s)</button>
+              <button id="auto-poll-button" class="button button-secondary" type="button" disabled>Start auto update</button>
             </div>
             <p id="response-status" class="status response-status" role="status" aria-live="polite">Connect to the FP-25, then request readings.</p>
           </div>

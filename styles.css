@@ -154,6 +154,34 @@ h1 {
   margin-top: 0;
 }
 
+.poll-interval-control {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.poll-interval-control label {
+  margin: 0;
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
+.poll-interval-control select {
+  min-height: 42px;
+  padding: 7px 32px 7px 11px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: #fff;
+  color: var(--ink);
+  font: inherit;
+}
+
+.poll-interval-control select:focus-visible {
+  outline: 3px solid #9ed5b5;
+  outline-offset: 2px;
+}
+
 .actions.poll-actions {
   display: grid;
 }
