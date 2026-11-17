@@ -2,6 +2,7 @@
 
 const connectButton = document.querySelector("#connect-button");
 const disconnectButton = document.querySelector("#disconnect-button");
+const alicatOnlyFilter = document.querySelector("#alicat-only-filter");
 const connectionPanel = document.querySelector("#connection-panel");
 const connectionSummary = document.querySelector("#connection-summary");
 const pollReadingsButton = document.querySelector("#poll-readings");
@@ -647,17 +648,24 @@ async function connect() {
   }
 
   connectButton.disabled = true;
-  setStatus("Choose a named Alicat device in the Bluetooth prompt…");
+  setStatus(alicatOnlyFilter.checked
+    ? "Choose a named Alicat device in the Bluetooth prompt…"
+    : "Choose a Bluetooth device in the prompt…");
 
   try {
-    const device = await navigator.bluetooth.requestDevice({
-      filters: [
-        { namePrefix: "Alicat" },
-        { namePrefix: "ALICAT" },
-        { namePrefix: "alicat" },
-      ],
+    const requestOptions = {
+      ...(alicatOnlyFilter.checked
+        ? {
+          filters: [
+            { namePrefix: "Alicat" },
+            { namePrefix: "ALICAT" },
+            { namePrefix: "alicat" },
+          ],
+        }
+        : { acceptAllDevices: true }),
       optionalServices: ["generic_access", "device_information", FP25_SERVICE_UUID],
-    });
+    };
+    const device = await navigator.bluetooth.requestDevice(requestOptions);
     if (!device.gatt) {
       throw new Error("The selected device does not expose a GATT server.");
     }
