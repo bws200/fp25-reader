@@ -2,7 +2,7 @@
 
 const connectButton = document.querySelector("#connect-button");
 const disconnectButton = document.querySelector("#disconnect-button");
-const alicatOnlyFilter = document.querySelector("#alicat-only-filter");
+const fp25OnlyFilter = document.querySelector("#fp25-only-filter");
 const connectionPanel = document.querySelector("#connection-panel");
 const connectionSummary = document.querySelector("#connection-summary");
 const pollReadingsButton = document.querySelector("#poll-readings");
@@ -648,20 +648,14 @@ async function connect() {
   }
 
   connectButton.disabled = true;
-  setStatus(alicatOnlyFilter.checked
-    ? "Choose a named Alicat device in the Bluetooth prompt…"
+  setStatus(fp25OnlyFilter.checked
+    ? "Choose an FP-25BT device in the Bluetooth prompt…"
     : "Choose a Bluetooth device in the prompt…");
 
   try {
     const requestOptions = {
-      ...(alicatOnlyFilter.checked
-        ? {
-          filters: [
-            { namePrefix: "Alicat" },
-            { namePrefix: "ALICAT" },
-            { namePrefix: "alicat" },
-          ],
-        }
+      ...(fp25OnlyFilter.checked
+        ? { filters: [{ services: [FP25_SERVICE_UUID] }] }
         : { acceptAllDevices: true }),
       optionalServices: ["generic_access", "device_information", FP25_SERVICE_UUID],
     };

@@ -21,7 +21,7 @@ The footer shows the Git commit hash and subject used for the deployed build. On
 
 ## Requirements and limitations
 
-- Web Bluetooth requires HTTPS and a supported browser. Android Chrome is a supported target; iOS browsers do not expose Web Bluetooth. The **Alicat devices only** chooser filter is checked by default and lists devices whose advertised name starts with “Alicat” (case-insensitive); uncheck it to show all devices, including unnamed devices.
+- Web Bluetooth requires HTTPS and a supported browser. Android Chrome is a supported target; iOS browsers do not expose Web Bluetooth. The **FP-25BT devices only** chooser filter is checked by default and matches devices advertising the FP-25 service UUID. If the device does not advertise that service, uncheck the filter to show all devices, including unnamed devices.
 - This project is not affiliated with Alicat and does not replace Alicat Connect.
 - BLE polling uses the `A` command shown in FlowVision's BLE Device terminal, which returned full live measurement frames. A carriage return terminates the request. The app writes to the observed `...e200` command channel and subscribes to notification characteristics; it does not guess the command channel from service enumeration order. Write-without-response is preferred because it is supported by the measurement characteristic. If your device firmware responds differently, stop polling and share the notification bytes before trying other commands.
 
