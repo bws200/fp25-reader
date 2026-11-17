@@ -647,11 +647,15 @@ async function connect() {
   }
 
   connectButton.disabled = true;
-  setStatus("Choose a device in the Bluetooth prompt…");
+  setStatus("Choose a named Alicat device in the Bluetooth prompt…");
 
   try {
     const device = await navigator.bluetooth.requestDevice({
-      acceptAllDevices: true,
+      filters: [
+        { namePrefix: "Alicat" },
+        { namePrefix: "ALICAT" },
+        { namePrefix: "alicat" },
+      ],
       optionalServices: ["generic_access", "device_information", FP25_SERVICE_UUID],
     });
     if (!device.gatt) {
